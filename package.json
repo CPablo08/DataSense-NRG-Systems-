@@ -23,13 +23,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "serve": "npx serve -s build -l 3000",
-    "deploy": "npm run build && vercel --prod",
-    "deploy:vercel": "vercel --prod",
-    "deploy:netlify": "npm run build && netlify deploy --prod --dir=build",
-    "deploy:github": "npm run build && gh-pages -d build",
-    "boot": "echo '🚀 Starting DataSense...' && npm start",
-    "quick-start": "npm install && npm start"
+    "serve": "npx serve -s build -l 3000"
   },
   "eslintConfig": {
     "extends": [
