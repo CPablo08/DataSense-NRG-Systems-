@@ -1,173 +1,224 @@
-# 🚀 **DataSense Render Deployment Guide**
+# 🚀 Render Deployment Guide for NRG DataSense Platform
 
-## 🌟 **Why Render is Better:**
+This guide will help you deploy the NRG DataSense platform on Render with full database persistence for user configurations.
 
-✅ **Simpler Setup** - No CLI authentication needed  
-✅ **Automatic Deployments** - Connects directly to GitHub  
-✅ **Free Tier** - 750 hours/month (plenty for DataSense)  
-✅ **HTTPS Included** - Automatic SSL certificates  
-✅ **Custom Domains** - Easy to set up  
-✅ **Global CDN** - Fast loading worldwide  
+## 📋 Prerequisites
 
----
+1. **Render Account**: Sign up at [render.com](https://render.com)
+2. **GitHub Repository**: Your code should be in a GitHub repository
+3. **NRG API Credentials**: Client ID and Client Secret from NRG Systems
 
-## 🚀 **Step-by-Step Deployment:**
+## 🏗️ Architecture Overview
 
-### **Step 1: Push to GitHub**
+The deployment consists of three components:
+
+1. **Backend API** (Python Flask) - Handles RLD conversion and configuration storage
+2. **Frontend** (React Static Site) - User interface
+3. **Database** (PostgreSQL) - Stores user configurations persistently
+
+## 🚀 Deployment Steps
+
+### Step 1: Prepare Your Repository
+
+1. Ensure your repository has the following structure:
+   ```
+   ├── backend/
+   │   ├── app.py
+   │   ├── requirements.txt
+   │   ├── config.py
+   │   └── run.py
+   ├── src/
+   │   ├── App.js
+   │   └── services/
+   │       └── api.js
+   ├── package.json
+   ├── render.yaml
+   └── README.md
+   ```
+
+2. Make sure all files are committed and pushed to GitHub.
+
+### Step 2: Deploy on Render
+
+#### Option A: Using render.yaml (Recommended)
+
+1. **Connect Repository**:
+   - Go to [render.com](https://render.com)
+   - Click "New +" → "Blueprint"
+   - Connect your GitHub repository
+   - Select the repository containing your code
+
+2. **Deploy**:
+   - Render will automatically detect the `render.yaml` file
+   - Click "Apply" to deploy all services
+   - This will create:
+     - Backend API service
+     - Frontend static site
+     - PostgreSQL database
+
+#### Option B: Manual Deployment
+
+If you prefer to deploy services individually:
+
+##### 1. Create Database
+- Go to "New +" → "PostgreSQL"
+- Name: `nrg-datasense-db`
+- Plan: Starter (Free)
+- Region: Choose closest to your users
+- Click "Create Database"
+
+##### 2. Deploy Backend
+- Go to "New +" → "Web Service"
+- Connect your GitHub repository
+- Configure:
+  - **Name**: `nrg-datasense-backend`
+  - **Environment**: Python
+  - **Build Command**: `cd backend && pip install -r requirements.txt`
+  - **Start Command**: `cd backend && python run.py`
+  - **Environment Variables**:
+    - `DATABASE_URL`: Copy from your PostgreSQL database
+    - `FLASK_ENV`: `production`
+    - `NRG_CLIENT_ID`: Your NRG Client ID
+    - `NRG_CLIENT_SECRET`: Your NRG Client Secret
+
+##### 3. Deploy Frontend
+- Go to "New +" → "Static Site"
+- Connect your GitHub repository
+- Configure:
+  - **Name**: `nrg-datasense-frontend`
+  - **Build Command**: `npm install && npm run build`
+  - **Publish Directory**: `build`
+  - **Environment Variables**:
+    - `REACT_APP_API_URL`: Your backend URL (e.g., `https://nrg-datasense-backend.onrender.com`)
+
+## 🔧 Configuration
+
+### Environment Variables
+
+#### Backend Environment Variables:
 ```bash
-# Create a new repository on GitHub.com named "datasense"
-# Then run these commands:
-
-git remote add origin https://github.com/YOUR_USERNAME/datasense.git
-git push -u origin main
+DATABASE_URL=postgresql://user:password@host:port/database
+FLASK_ENV=production
+NRG_CLIENT_ID=your_nrg_client_id
+NRG_CLIENT_SECRET=your_nrg_client_secret
 ```
 
-### **Step 2: Connect to Render**
-1. Go to [render.com](https://render.com)
-2. Click "Sign Up" (use GitHub account)
-3. Click "New +" → "Static Site"
-4. Connect your GitHub account
-5. Select the "datasense" repository
-
-### **Step 3: Configure Deployment**
-- **Name**: `datasense`
-- **Build Command**: `npm install && npm run build`
-- **Publish Directory**: `build`
-- **Click "Create Static Site"**
-
-### **Step 4: Get Your Live URL**
-- Render will automatically build and deploy
-- You'll get a URL like: `https://datasense.onrender.com`
-- **Share this URL with anyone!**
-
----
-
-## 🎯 **What You Get:**
-
-### ✅ **24/7 Availability**
-- Your app runs continuously
-- No need to keep your computer on
-- Accessible from anywhere
-
-### ✅ **Professional URL**
-- Clean, professional web address
-- Easy to share with others
-- HTTPS security included
-
-### ✅ **Automatic Updates**
-- Every time you push to GitHub, Render automatically redeploys
-- No manual deployment needed
-- Always latest version
-
-### ✅ **Mobile Access**
-- Works perfectly on phones, tablets, laptops
-- Responsive design
-- Touch-friendly interface
-
----
-
-## 📱 **Mobile Features:**
-
-### **Progressive Web App:**
-- Open your app on mobile browser
-- Add to home screen
-- Works like a native app
-
-### **Responsive Design:**
-- Optimized for all screen sizes
-- Touch-friendly interface
-- Works on any device
-
----
-
-## 🔒 **Security & Privacy:**
-
-### **Data Processing:**
-- ✅ All processing happens in browser
-- ✅ No data sent to servers
-- ✅ Your meteorological files stay private
-- ✅ No account required for users
-
-### **HTTPS Security:**
-- ✅ Automatic SSL certificates
-- ✅ Secure data transmission
-- ✅ Trusted by browsers
-
----
-
-## 💰 **Costs:**
-
-### **Free Tier:**
-- **750 hours/month** (plenty for DataSense)
-- **Unlimited bandwidth**
-- **Custom domains included**
-- **No credit card required**
-
-### **When to Upgrade:**
-- High traffic (>750 hours/month)
-- Team collaboration features
-- Priority support
-
----
-
-## 🔄 **Updating Your App:**
-
-### **Automatic Updates:**
+#### Frontend Environment Variables:
 ```bash
-# Make changes to your code
-git add .
-git commit -m "Update DataSense"
-git push origin main
-# Render automatically redeploys!
+REACT_APP_API_URL=https://your-backend-url.onrender.com
 ```
 
-### **Manual Redeploy:**
-- Go to your Render dashboard
-- Click "Manual Deploy"
+### Database Setup
 
----
+The database will be automatically created with the following tables:
+- `user_config`: Stores user configurations and settings
 
-## 🛠️ **Troubleshooting:**
+## 🔍 Testing Your Deployment
 
-### **Build Errors:**
+1. **Backend Health Check**:
+   ```bash
+   curl https://your-backend-url.onrender.com/health
+   ```
+
+2. **Frontend Access**:
+   - Visit your frontend URL
+   - Check if the application loads correctly
+   - Test the settings panel
+
+3. **Configuration Persistence**:
+   - Open settings and configure NRG API credentials
+   - Save settings
+   - Close browser and reopen
+   - Verify settings are still there
+
+## 🔒 Security Considerations
+
+1. **Environment Variables**: Never commit sensitive data like API keys
+2. **Database Access**: Render automatically secures database connections
+3. **CORS**: Backend is configured to allow frontend domain
+4. **File Upload Limits**: Set to 100MB max file size
+
+## 📊 Monitoring
+
+### Render Dashboard
+- Monitor service health in Render dashboard
+- Check logs for any errors
+- Monitor database usage
+
+### Application Logs
+- Backend logs are available in Render dashboard
+- Frontend errors appear in browser console
+
+## 🚨 Troubleshooting
+
+### Common Issues:
+
+1. **Backend Not Starting**:
+   - Check if all dependencies are in `requirements.txt`
+   - Verify environment variables are set correctly
+   - Check logs for Python errors
+
+2. **Database Connection Issues**:
+   - Verify `DATABASE_URL` is correct
+   - Check if database is running
+   - Ensure database credentials are valid
+
+3. **Frontend Not Loading**:
+   - Check if `REACT_APP_API_URL` points to correct backend
+   - Verify build completed successfully
+   - Check browser console for errors
+
+4. **Configuration Not Saving**:
+   - Check if database is accessible
+   - Verify backend API endpoints are working
+   - Check browser network tab for API errors
+
+### Debug Commands:
+
 ```bash
-# Test build locally first
-npm run build
+# Check backend health
+curl https://your-backend-url.onrender.com/health
 
-# If successful, push to GitHub
-git push origin main
+# Check database connection
+curl https://your-backend-url.onrender.com/api/config?session_id=test
+
+# Test file conversion (if you have RLD files)
+curl -X POST -F "files=@test.rld" https://your-backend-url.onrender.com/convert-rld
 ```
 
-### **Deployment Issues:**
-- Check Render dashboard for build logs
-- Ensure all dependencies are in `package.json`
-- Verify `render.yaml` configuration
+## 🔄 Updates and Maintenance
+
+### Updating the Application:
+1. Push changes to GitHub
+2. Render will automatically redeploy
+3. Monitor deployment logs
+4. Test functionality after deployment
+
+### Database Migrations:
+- Database schema changes are handled automatically
+- New tables/columns are created on startup
+- No manual migration needed
+
+## 💰 Cost Considerations
+
+### Free Tier Limits:
+- **Backend**: 750 hours/month (free tier)
+- **Frontend**: Unlimited (static sites are free)
+- **Database**: 1GB storage (free tier)
+
+### Paid Plans:
+- **Backend**: $7/month for always-on service
+- **Database**: $7/month for 1GB storage
+- **Frontend**: Remains free
+
+## 📞 Support
+
+If you encounter issues:
+1. Check Render documentation
+2. Review application logs
+3. Test locally first
+4. Contact Render support if needed
 
 ---
 
-## 🎉 **Success!**
-
-Once deployed, your DataSense app will be:
-- ✅ **Available 24/7**
-- ✅ **Accessible from anywhere**
-- ✅ **No installation required**
-- ✅ **Professional and reliable**
-- ✅ **Automatic updates**
-
-**Share the URL and start processing meteorological data!** 🌐📊
-
----
-
-## 📋 **Quick Commands:**
-
-```bash
-# Build locally to test
-npm run build
-
-# Push to GitHub (triggers Render deployment)
-git add .
-git commit -m "Update DataSense"
-git push origin main
-```
-
-**That's it! Render handles everything else automatically.** 🚀 
+**🎉 Congratulations!** Your NRG DataSense platform is now deployed with full database persistence. Users can close their browsers and reopen them, and their configurations will be preserved across sessions and devices. 

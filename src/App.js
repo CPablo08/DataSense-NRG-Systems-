@@ -14,6 +14,7 @@ import {
 } from 'react-icons/fi';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import apiService from './services/api';
 
 // Styled Components with darker colors
 const AppContainer = styled.div`
@@ -197,6 +198,31 @@ const UnitSelect = styled.select`
     outline: none;
     border-color: #1f6feb;
     box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.2);
+  }
+`;
+
+const ConfigInput = styled.input`
+  background: #0d1117;
+  border: 1px solid #30363d;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  width: 100%;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #1f6feb;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #1f6feb;
+    box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.2);
+  }
+
+  &::placeholder {
+    color: #8b949e;
   }
 `;
 
@@ -573,6 +599,190 @@ const EnlargedGraphModal = styled.div`
   flex-direction: column;
 `;
 
+const FileSelectionModal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #0d1117;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+`;
+
+const FileSelectionContent = styled.div`
+  background: #0d1117;
+  flex: 1;
+  padding: 20px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+`;
+
+const FileSelectionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #30363d;
+  background: #161b22;
+`;
+
+const FileSelectionTitle = styled.h2`
+  color: #fff;
+  margin: 0;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+`;
+
+const FileSelectionCloseButton = styled.button`
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  
+  &:hover {
+    background: #30363d;
+  }
+`;
+
+const FileListContainer = styled.div`
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  background: #161b22;
+  margin: 20px;
+  border-radius: 8px;
+  border: 1px solid #30363d;
+`;
+
+const FileItem = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background: ${props => props.selected ? '#1f6feb' : '#21262d'};
+  border: 1px solid ${props => props.selected ? '#1f6feb' : '#30363d'};
+  border-radius: 6px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: ${props => props.selected ? '#1158c7' : '#30363d'};
+    border-color: #1f6feb;
+  }
+`;
+
+const FileCheckbox = styled.input`
+  margin-right: 15px;
+  transform: scale(1.2);
+`;
+
+const FileInfo = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+`;
+
+const FileName = styled.div`
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 5px;
+`;
+
+const FileDetails = styled.div`
+  font-size: 12px;
+  color: #8b949e;
+  display: flex;
+  gap: 20px;
+`;
+
+const FileSelectionFooter = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-top: 1px solid #30363d;
+  background: #161b22;
+`;
+
+const SelectionControls = styled.div`
+  display: flex;
+  gap: 10px;
+`;
+
+const SelectionButton = styled.button`
+  background: ${props => props.variant === 'secondary' ? '#30363d' : '#1f6feb'};
+  border: 1px solid ${props => props.variant === 'secondary' ? '#30363d' : '#1f6feb'};
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: ${props => props.variant === 'secondary' ? '#40464d' : '#1158c7'};
+    border-color: ${props => props.variant === 'secondary' ? '#40464d' : '#1158c7'};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const ProcessingStatus = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #8b949e;
+  font-size: 14px;
+`;
+
+const ProcessingSpinner = styled.div`
+  width: 16px;
+  height: 16px;
+  border: 2px solid #30363d;
+  border-top: 2px solid #1f6feb;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
+const HelpText = styled.div`
+  font-size: 11px;
+  color: #8b949e;
+  margin-top: 5px;
+  line-height: 1.4;
+  font-style: italic;
+`;
+
+const SettingsStatus = styled.div`
+  font-size: 12px;
+  color: ${props => props.type === 'success' ? '#238636' : props.type === 'error' ? '#da3633' : '#8b949e'};
+  margin-top: 10px;
+  padding: 8px;
+  background: ${props => props.type === 'success' ? 'rgba(35, 134, 54, 0.1)' : props.type === 'error' ? 'rgba(218, 54, 51, 0.1)' : 'transparent'};
+  border-radius: 4px;
+  border: 1px solid ${props => props.type === 'success' ? 'rgba(35, 134, 54, 0.3)' : props.type === 'error' ? 'rgba(218, 54, 51, 0.3)' : 'transparent'};
+`;
+
 const EnlargedGraphContent = styled.div`
   background: #0d1117;
   flex: 1;
@@ -840,7 +1050,40 @@ const translations = {
     settings: 'Settings',
     save: 'Save',
     reset: 'Reset',
-    cancel: 'Cancel'
+    cancel: 'Cancel',
+    // NRG API Configuration translations
+    nrgApiConfiguration: 'NRG API Configuration',
+    clientId: 'Client ID',
+    clientSecret: 'Client Secret',
+    enterClientId: 'Enter NRG Cloud Convert Client ID',
+    enterClientSecret: 'Enter NRG Cloud Convert Client Secret',
+    fileFilter: 'File Filter',
+    allFiles: 'All Files',
+    startDate: 'Start Date',
+    endDate: 'End Date',
+    startDatePlaceholder: 'e.g., 2024-01-01',
+    endDatePlaceholder: 'e.g., 2024-12-31',
+    // Folder selection translations
+    selectFolder: 'Select Folder',
+    folderSelection: 'Folder Selection',
+    selectUpToTenFiles: 'Select up to 10 files to process',
+    selectedFiles: 'Selected Files',
+    noFilesSelected: 'No files selected',
+    processSelectedFiles: 'Process Selected Files',
+    fileSelectionPanel: 'File Selection Panel',
+    timestamp: 'Timestamp',
+    fileName: 'File Name',
+    fileSize: 'File Size',
+    selectAll: 'Select All',
+    deselectAll: 'Deselect All',
+    processingFolder: 'Processing folder...',
+    folderProcessed: 'Folder processed successfully',
+    convertingRldToTxt: 'Converting RLD to TXT...',
+    convertingTxtToCsv: 'Converting TXT to CSV...',
+    readyForSelection: 'Ready for file selection',
+    // File filter explanations
+    fileFilterExplanation: 'Filter to process only specific file types (e.g., "000110" for specific station files)',
+    fileFilterHelp: 'Leave empty to process all files, or enter a specific filter pattern'
   },
   'es-DO': {
     dashboard: 'Panel Principal',
@@ -1017,7 +1260,40 @@ const translations = {
     with: 'con',
     totalRecords: 'Registros Totales',
     fullScreenAnalysis: 'Análisis de Pantalla Completa',
-    closeAnalysisWindow: 'Cerrar Ventana de Análisis'
+    closeAnalysisWindow: 'Cerrar Ventana de Análisis',
+    // NRG API Configuration translations
+    nrgApiConfiguration: 'Configuración de API NRG',
+    clientId: 'ID de Cliente',
+    clientSecret: 'Secreto de Cliente',
+    enterClientId: 'Ingrese ID de Cliente de NRG Cloud Convert',
+    enterClientSecret: 'Ingrese Secreto de Cliente de NRG Cloud Convert',
+    fileFilter: 'Filtro de Archivos',
+    allFiles: 'Todos los Archivos',
+    startDate: 'Fecha de Inicio',
+    endDate: 'Fecha de Fin',
+    startDatePlaceholder: 'ej., 2024-01-01',
+    endDatePlaceholder: 'ej., 2024-12-31',
+    // Folder selection translations
+    selectFolder: 'Seleccionar Carpeta',
+    folderSelection: 'Selección de Carpeta',
+    selectUpToTenFiles: 'Seleccione hasta 10 archivos para procesar',
+    selectedFiles: 'Archivos Seleccionados',
+    noFilesSelected: 'No hay archivos seleccionados',
+    processSelectedFiles: 'Procesar Archivos Seleccionados',
+    fileSelectionPanel: 'Panel de Selección de Archivos',
+    timestamp: 'Marca de Tiempo',
+    fileName: 'Nombre del Archivo',
+    fileSize: 'Tamaño del Archivo',
+    selectAll: 'Seleccionar Todos',
+    deselectAll: 'Deseleccionar Todos',
+    processingFolder: 'Procesando carpeta...',
+    folderProcessed: 'Carpeta procesada exitosamente',
+    convertingRldToTxt: 'Convirtiendo RLD a TXT...',
+    convertingTxtToCsv: 'Convirtiendo TXT a CSV...',
+    readyForSelection: 'Listo para selección de archivos',
+    // File filter explanations
+    fileFilterExplanation: 'Filtro para procesar solo tipos específicos de archivos (ej., "000110" para archivos de estación específica)',
+    fileFilterHelp: 'Dejar vacío para procesar todos los archivos, o ingresar un patrón de filtro específico'
   }
 };
 
@@ -1064,6 +1340,27 @@ const App = () => {
   const [availableTags, setAvailableTags] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('idle');
+  
+  // NRG API Configuration
+  const [nrgConfig, setNrgConfig] = useState({
+    client_id: '',
+    client_secret: '',
+    file_filter: '000110',
+    start_date: '',
+    end_date: ''
+  });
+  
+  // Backend service status
+  const [backendStatus, setBackendStatus] = useState('unknown');
+  
+  // Folder selection workflow
+  const [showFileSelectionPanel, setShowFileSelectionPanel] = useState(false);
+  const [convertedFiles, setConvertedFiles] = useState([]);
+  const [selectedFilesForProcessing, setSelectedFilesForProcessing] = useState([]);
+  const [isProcessingFolder, setIsProcessingFolder] = useState(false);
+  
+  // Settings save status
+  const [settingsSaveStatus, setSettingsSaveStatus] = useState({ type: '', message: '' });
 
 
   // Load library files from localStorage on app start and clean old data
@@ -1105,6 +1402,56 @@ const App = () => {
       });
       setAvailableTags(Array.from(allTags));
     }
+  }, []);
+
+  // Generate or get session ID
+  const getSessionId = () => {
+    let sessionId = localStorage.getItem('datasenseSessionId');
+    if (!sessionId) {
+      sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('datasenseSessionId', sessionId);
+    }
+    return sessionId;
+  };
+
+  // Load configuration from server with localStorage fallback
+  useEffect(() => {
+    const loadConfiguration = async () => {
+      const sessionId = getSessionId();
+      
+      try {
+        // Try to load from server first
+        const serverConfig = await apiService.loadConfiguration(sessionId);
+        
+        if (serverConfig.nrg_config && Object.keys(serverConfig.nrg_config).length > 0) {
+          setNrgConfig(serverConfig.nrg_config);
+          addLogEntry('Configuration loaded from server', 'info');
+        }
+        
+        if (serverConfig.sensor_units && Object.keys(serverConfig.sensor_units).length > 0) {
+          setSensorUnits(serverConfig.sensor_units);
+          addLogEntry('Sensor units loaded from server', 'info');
+        }
+        
+      } catch (error) {
+        console.log('Server configuration not available, using localStorage fallback');
+        
+        // Fallback to localStorage
+        const savedNrgConfig = localStorage.getItem('datasenseNrgConfig');
+        if (savedNrgConfig) {
+          try {
+            const config = JSON.parse(savedNrgConfig);
+            setNrgConfig(config);
+            addLogEntry('NRG configuration loaded from localStorage', 'info');
+          } catch (error) {
+            console.error('Error loading NRG configuration:', error);
+            addLogEntry('Error loading saved NRG configuration', 'error');
+          }
+        }
+      }
+    };
+
+    loadConfiguration();
   }, []);
 
   // Save library files to localStorage whenever they change
@@ -1175,13 +1522,49 @@ const App = () => {
       'Average_12V_Battery': 'V'
     };
     setSensorUnits(defaultUnits);
-    addLogEntry('Sensor units reset to defaults', 'info');
+    
+    // Reset NRG configuration to defaults
+    const defaultNrgConfig = {
+      client_id: '',
+      client_secret: '',
+      file_filter: '000110',
+      start_date: '',
+      end_date: ''
+    };
+    setNrgConfig(defaultNrgConfig);
+    
+    addLogEntry('All settings reset to defaults', 'info');
   };
 
-  const saveSettings = () => {
-    localStorage.setItem('datasenseSensorUnits', JSON.stringify(sensorUnits));
-    addLogEntry('Sensor unit settings saved', 'success');
-    setShowSettings(false);
+  const saveSettings = async () => {
+    try {
+      const sessionId = getSessionId();
+      
+      // Save to server
+      try {
+        await apiService.saveConfiguration(sessionId, nrgConfig, sensorUnits);
+        addLogEntry('Settings saved to server', 'success');
+      } catch (serverError) {
+        console.log('Server save failed, using localStorage only:', serverError);
+        addLogEntry('Server unavailable, using local storage', 'warning');
+      }
+      
+      // Always save to localStorage as backup
+      localStorage.setItem('datasenseSensorUnits', JSON.stringify(sensorUnits));
+      localStorage.setItem('datasenseNrgConfig', JSON.stringify(nrgConfig));
+      
+      setSettingsSaveStatus({ type: 'success', message: 'Settings saved successfully!' });
+      addLogEntry('All settings saved successfully', 'success');
+      
+      // Clear status after 3 seconds
+      setTimeout(() => {
+        setSettingsSaveStatus({ type: '', message: '' });
+      }, 3000);
+      
+    } catch (error) {
+      setSettingsSaveStatus({ type: 'error', message: 'Error saving settings: ' + error.message });
+      addLogEntry('Error saving settings: ' + error.message, 'error');
+    }
   };
 
   // Load sensor units from localStorage
@@ -1209,22 +1592,38 @@ const App = () => {
       fileCount: 0,
       lastUpdate: new Date().toLocaleTimeString()
     });
+    
+    // Check backend service health
+    checkBackendHealth();
   }, []);
+  
+  // Check backend service health
+  const checkBackendHealth = async () => {
+    try {
+      addLogEntry('Checking backend service health...', 'info');
+      const health = await apiService.checkHealth();
+      setBackendStatus('healthy');
+      addLogEntry('Backend service is healthy', 'success');
+    } catch (error) {
+      setBackendStatus('unavailable');
+      addLogEntry(`Backend service unavailable: ${error.message}`, 'error');
+    }
+  };
 
 
 
   const getSensorDisplayName = (sensorName) => {
     const names = {
-          'NRG_40C_Anem': 'Velocidad del Viento (Anemómetro)',
-    'NRG_200M_Vane': 'Dirección del Viento (Veleta)',
-    'NRG_T60_Temp': 'Temperatura del Aire',
-    'NRG_RH5X_Humi': 'Humedad Relativa',
-    'NRG_BP60_Baro': 'Presión Barométrica',
-    'Rain_Gauge': 'Precipitación',
-    'NRG_PVT1_PV_Temp': 'Temperatura PV',
-    'PSM_c_Si_Isc_Soil': 'Corriente Solar (Suelo)',
-    'PSM_c_Si_Isc_Clean': 'Corriente Solar (Limpia)',
-    'Average_12V_Battery': 'Voltaje de Batería',
+      'NRG_40C_Anem': language === 'en' ? 'Wind Speed (Anemometer)' : 'Velocidad del Viento (Anemómetro)',
+      'NRG_200M_Vane': language === 'en' ? 'Wind Direction (Vane)' : 'Dirección del Viento (Veleta)',
+      'NRG_T60_Temp': language === 'en' ? 'Air Temperature' : 'Temperatura del Aire',
+      'NRG_RH5X_Humi': language === 'en' ? 'Relative Humidity' : 'Humedad Relativa',
+      'NRG_BP60_Baro': language === 'en' ? 'Barometric Pressure' : 'Presión Barométrica',
+      'Rain_Gauge': language === 'en' ? 'Precipitation' : 'Precipitación',
+      'NRG_PVT1_PV_Temp': language === 'en' ? 'PV Temperature' : 'Temperatura PV',
+      'PSM_c_Si_Isc_Soil': language === 'en' ? 'Solar Current (Soil)' : 'Corriente Solar (Suelo)',
+      'PSM_c_Si_Isc_Clean': language === 'en' ? 'Solar Current (Clean)' : 'Corriente Solar (Limpia)',
+      'Average_12V_Battery': language === 'en' ? 'Battery Voltage' : 'Voltaje de Batería',
       // SymphoniePRO sensor mappings
       'Ch1_Anem_0.00m_N_Avg_m/s': 'Wind Speed (Avg)',
       'Ch1_Anem_0.00m_N_Max_m/s': 'Wind Speed (Max)',
@@ -1348,6 +1747,143 @@ const App = () => {
     return fileData;
   };
 
+  const handleFolderSelect = async () => {
+    try {
+      addLogEntry('Opening folder selection dialog...', 'info');
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.webkitdirectory = true;
+      input.multiple = true;
+      input.accept = '.rld,.txt';
+      
+      input.onchange = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) {
+          addLogEntry('No files selected from folder', 'error');
+          return;
+        }
+        
+        addLogEntry(`Selected folder with ${files.length} files`, 'success');
+        await processFolder(files);
+      };
+      
+      input.click();
+    } catch (error) {
+      addLogEntry(`Error selecting folder: ${error.message}`, 'error');
+      console.error('Error selecting folder:', error);
+    }
+  };
+
+  const processFolder = async (files) => {
+    setIsProcessingFolder(true);
+    addLogEntry('Starting folder processing...', 'info');
+    
+    try {
+      // Check if NRG credentials are configured
+      if (!nrgConfig.client_id || !nrgConfig.client_secret) {
+        addLogEntry('NRG API credentials not configured. Please set Client ID and Client Secret.', 'error');
+        setIsProcessingFolder(false);
+        return;
+      }
+
+      // Check backend service status
+      if (backendStatus !== 'healthy') {
+        addLogEntry('Backend service is not available. Please ensure the Python backend is running.', 'error');
+        setIsProcessingFolder(false);
+        return;
+      }
+
+      // Filter RLD files
+      const rldFiles = files.filter(file => file.name.toLowerCase().endsWith('.rld'));
+      
+      if (rldFiles.length === 0) {
+        addLogEntry('No RLD files found in the selected folder', 'error');
+        setIsProcessingFolder(false);
+        return;
+      }
+
+      addLogEntry(`Found ${rldFiles.length} RLD files, starting conversion...`, 'info');
+      
+      // Convert RLD files to TXT
+      addLogEntry(t('convertingRldToTxt'), 'info');
+      const convertedBlob = await apiService.convertFolder(rldFiles, nrgConfig);
+      
+      // Extract TXT files from the ZIP blob
+      const txtFiles = await apiService.extractTxtFilesFromZip(convertedBlob);
+      
+      addLogEntry(`Successfully converted ${txtFiles.length} files from RLD to TXT`, 'success');
+      
+      // Prepare files for selection
+      const filesForSelection = txtFiles.map((txtFile, index) => ({
+        id: index,
+        name: txtFile.name,
+        content: txtFile.content,
+        size: txtFile.size,
+        timestamp: new Date().toISOString(), // You might want to extract this from the file content
+        selected: false
+      }));
+      
+      setConvertedFiles(filesForSelection);
+      setSelectedFilesForProcessing([]);
+      setShowFileSelectionPanel(true);
+      setIsProcessingFolder(false);
+      
+      addLogEntry(t('readyForSelection'), 'success');
+      
+    } catch (error) {
+      addLogEntry(`Folder processing failed: ${error.message}`, 'error');
+      setIsProcessingFolder(false);
+    }
+  };
+
+  const handleFileSelection = (fileId) => {
+    setConvertedFiles(prev => prev.map(file => 
+      file.id === fileId 
+        ? { ...file, selected: !file.selected }
+        : file
+    ));
+  };
+
+  const handleSelectAll = () => {
+    setConvertedFiles(prev => prev.map(file => ({ ...file, selected: true })));
+  };
+
+  const handleDeselectAll = () => {
+    setConvertedFiles(prev => prev.map(file => ({ ...file, selected: false })));
+  };
+
+  const handleProcessSelectedFiles = async () => {
+    const selectedFiles = convertedFiles.filter(file => file.selected);
+    
+    if (selectedFiles.length === 0) {
+      addLogEntry(t('noFilesSelected'), 'error');
+      return;
+    }
+    
+    if (selectedFiles.length > 10) {
+      addLogEntry('Maximum 10 files can be selected for processing', 'error');
+      return;
+    }
+    
+    addLogEntry(`Processing ${selectedFiles.length} selected files...`, 'info');
+    
+    try {
+      // Convert selected files to the format expected by handleTXTFileProcessing
+      const txtFilesForProcessing = selectedFiles.map(file => ({
+        name: file.name,
+        content: file.content,
+        size: file.size
+      }));
+      
+      await handleTXTFileProcessing(txtFilesForProcessing);
+      setShowFileSelectionPanel(false);
+      addLogEntry('Selected files processed successfully', 'success');
+      
+    } catch (error) {
+      addLogEntry(`Error processing selected files: ${error.message}`, 'error');
+    }
+  };
+
   const handleFileSelect = async () => {
     try {
       addLogEntry('Opening file selection dialog...', 'info');
@@ -1376,44 +1912,40 @@ const App = () => {
       return;
     }
 
+    // Check if NRG credentials are configured
+    if (!nrgConfig.client_id || !nrgConfig.client_secret) {
+      addLogEntry('NRG API credentials not configured. Please set Client ID and Client Secret.', 'error');
+      return;
+    }
+
+    // Check backend service status
+    if (backendStatus !== 'healthy') {
+      addLogEntry('Backend service is not available. Please ensure the Python backend is running.', 'error');
+      return;
+    }
+
     setIsProcessing(true);
     setProcessingStatus('processing');
     addLogEntry('Starting file processing...', 'info');
     
     try {
-      // Check if files are RLD or TXT files
-      const dataFiles = selectedFiles.filter(file => 
-        file.name.toLowerCase().endsWith('.rld') || 
+      // Check if files are RLD files
+      const rldFiles = selectedFiles.filter(file => 
+        file.name.toLowerCase().endsWith('.rld')
+      );
+      
+      const txtFiles = selectedFiles.filter(file => 
         file.name.toLowerCase().endsWith('.txt')
       );
       
-      if (dataFiles.length > 0) {
-        addLogEntry(`Found ${dataFiles.length} data files, starting processing`, 'info');
-        await handleRLDFileProcessing(dataFiles);
+      if (rldFiles.length > 0) {
+        addLogEntry(`Found ${rldFiles.length} RLD files, starting conversion to TXT...`, 'info');
+        await handleRLDToTXTConversion(rldFiles);
+      } else if (txtFiles.length > 0) {
+        addLogEntry(`Found ${txtFiles.length} TXT files, processing directly...`, 'info');
+        await handleTXTFileProcessing(txtFiles);
       } else {
-        // Regular file processing
-        for (let i = 0; i < selectedFiles.length; i++) {
-          const file = selectedFiles[i];
-          addLogEntry(`Processing file ${i + 1}/${selectedFiles.length}: ${file.name}`, 'info');
-          
-          // Simulate file reading
-          await new Promise(resolve => setTimeout(resolve, 500));
-          addLogEntry(`Reading file content: ${file.name}`, 'info');
-          
-          // Simulate data parsing
-          await new Promise(resolve => setTimeout(resolve, 800));
-          addLogEntry(`Parsing data from: ${file.name}`, 'info');
-          
-          // Simulate data validation
-          await new Promise(resolve => setTimeout(resolve, 300));
-          addLogEntry(`Validating data format: ${file.name}`, 'info');
-          
-          // Simulate database storage
-          await new Promise(resolve => setTimeout(resolve, 400));
-          addLogEntry(`Storing data to database: ${file.name}`, 'info');
-          
-          addLogEntry(`Successfully processed: ${file.name}`, 'success');
-        }
+        addLogEntry('No RLD or TXT files found for processing', 'error');
       }
       
       setProcessingStatus('completed');
@@ -1429,7 +1961,198 @@ const App = () => {
 
 
 
-    const handleRLDFileProcessing = async (files) => {
+    const handleRLDToTXTConversion = async (files) => {
+    addLogEntry('Starting RLD to TXT conversion using NRG Cloud Convert API...', 'info');
+    
+    try {
+      // Convert RLD files to TXT using backend service
+      addLogEntry('Uploading RLD files to backend service...', 'info');
+      const convertedBlob = await apiService.convertRLDFiles(files, nrgConfig);
+      
+      addLogEntry('RLD files converted successfully, extracting TXT files...', 'success');
+      
+      // Extract TXT files from the ZIP blob
+      const txtFiles = await apiService.extractTxtFilesFromZip(convertedBlob);
+      
+      addLogEntry(`Extracted ${txtFiles.length} TXT files from conversion`, 'success');
+      
+      // Process the extracted TXT files
+      await handleTXTFileProcessing(txtFiles);
+      
+      // Download the converted files
+      apiService.downloadConvertedFiles(convertedBlob, `converted_rld_files_${new Date().toISOString().split('T')[0]}.zip`);
+      addLogEntry('Converted files downloaded successfully', 'success');
+      
+    } catch (error) {
+      addLogEntry(`RLD to TXT conversion failed: ${error.message}`, 'error');
+      throw error;
+    }
+  };
+
+  const handleTXTFileProcessing = async (txtFiles) => {
+    addLogEntry('Processing TXT files for visualization...', 'info');
+    
+    try {
+      let unifiedData = [];
+      
+      for (let i = 0; i < txtFiles.length; i++) {
+        const txtFile = txtFiles[i];
+        addLogEntry(`Processing TXT file ${i + 1}/${txtFiles.length}: ${txtFile.name}`, 'info');
+        
+        // Get file content (either from File object or extracted content)
+        let fileContent;
+        if (txtFile instanceof File) {
+          fileContent = await txtFile.text();
+        } else {
+          fileContent = txtFile.content;
+        }
+        
+        addLogEntry(`File size: ${fileContent.length} characters`, 'info');
+        
+        // Parse file content
+        const lines = fileContent.split('\n').filter(line => line.trim());
+        addLogEntry(`Found ${lines.length} data lines in ${txtFile.name}`, 'info');
+        
+        // Check if this is a SymphoniePRO TXT file
+        const isSymphoniePRO = txtFile.name.toLowerCase().includes('.txt') && 
+          (fileContent.includes('SymphoniePRO') || fileContent.includes('NRG Systems'));
+        
+        if (isSymphoniePRO) {
+          addLogEntry('Detected SymphoniePRO TXT format - parsing meteorological data...', 'info');
+          const fileData = await parseSymphoniePROFile(fileContent, txtFile.name);
+          unifiedData = [...unifiedData, ...fileData];
+        } else {
+          // Process as regular TXT format
+          addLogEntry('Processing as regular TXT format...', 'info');
+          const fileData = await parseRegularTXTFile(fileContent, txtFile.name);
+          unifiedData = [...unifiedData, ...fileData];
+        }
+      }
+      
+      // Update app with unified data
+      if (unifiedData.length > 0) {
+        setRealTimeData(unifiedData);
+        setTimeIndex(0);
+        setHasData(true);
+        
+        // Save to library
+        const libraryEntry = {
+          id: Date.now().toString(),
+          name: `Processed_Data_${new Date().toISOString().split('T')[0]}`,
+          files: txtFiles.map(f => f.name || f),
+          records: unifiedData.length,
+          date: new Date().toISOString(),
+          data: unifiedData,
+          tags: ['TXT', 'Processed', 'Environmental'],
+          summary: {
+            totalRecords: unifiedData.length,
+            sensorCount: 10,
+            fileCount: txtFiles.length,
+            lastUpdate: new Date().toLocaleTimeString()
+          }
+        };
+        
+        setLibraryFiles(prev => [libraryEntry, ...prev]);
+        setSummary({
+          totalRecords: unifiedData.length,
+          sensorCount: 10,
+          fileCount: txtFiles.length,
+          lastUpdate: new Date().toLocaleTimeString()
+        });
+        
+        addLogEntry(`Successfully processed ${txtFiles.length} TXT files with ${unifiedData.length} total records`, 'success');
+      } else {
+        addLogEntry('No valid data found in TXT files', 'error');
+      }
+      
+    } catch (error) {
+      addLogEntry(`TXT file processing failed: ${error.message}`, 'error');
+      throw error;
+    }
+  };
+
+  const parseRegularTXTFile = async (fileContent, fileName) => {
+    addLogEntry(`Parsing regular TXT file: ${fileName}`, 'info');
+    
+    const lines = fileContent.split('\n').filter(line => line.trim());
+    const fileData = [];
+    let validRecords = 0;
+    
+    for (let j = 0; j < lines.length; j++) {
+      const line = lines[j].trim();
+      if (!line || line.startsWith('#') || line.startsWith('//') || line.startsWith('Header')) continue;
+      
+      try {
+        // Try different parsing approaches for TXT format
+        let parts = [];
+        
+        // First try: comma-separated
+        if (line.includes(',')) {
+          parts = line.split(',').map(part => part.trim());
+        }
+        // Second try: tab-separated
+        else if (line.includes('\t')) {
+          parts = line.split('\t').map(part => part.trim());
+        }
+        // Third try: space-separated
+        else if (line.includes(' ')) {
+          parts = line.split(/\s+/).filter(part => part.trim());
+        }
+        // Fourth try: any whitespace
+        else {
+          parts = line.split(/\s+/).filter(part => part.trim());
+        }
+        
+        // Filter out empty parts and try to extract numeric values
+        parts = parts.filter(part => part.trim() !== '');
+        
+        // If we have data, try to extract values
+        if (parts.length >= 3) {
+          // Try to find numeric values in the parts
+          const numericParts = parts.map(part => {
+            const num = parseFloat(part);
+            return isNaN(num) ? 0 : num;
+          });
+          
+          // Use current time as base timestamp
+          const recordTime = new Date();
+          recordTime.setMinutes(recordTime.getMinutes() + j);
+          
+          const dataPoint = {
+            time: recordTime.toLocaleTimeString(),
+            timestamp: recordTime.toISOString(),
+            NRG_40C_Anem: numericParts[0] || 0,
+            NRG_200M_Vane: numericParts[1] || 0,
+            NRG_T60_Temp: numericParts[2] || 0,
+            NRG_RH5X_Humi: numericParts[3] || 0,
+            NRG_BP60_Baro: numericParts[4] || 0,
+            Rain_Gauge: numericParts[5] || 0,
+            NRG_PVT1_PV_Temp: numericParts[6] || 0,
+            PSM_c_Si_Isc_Soil: numericParts[7] || 0,
+            PSM_c_Si_Isc_Clean: numericParts[8] || 0,
+            Average_12V_Battery: numericParts[9] || 0
+          };
+          
+          // Only add if we have some non-zero values
+          const hasData = Object.values(dataPoint).some(val => 
+            typeof val === 'number' && val !== 0 && !isNaN(val)
+          );
+          
+          if (hasData) {
+            fileData.push(dataPoint);
+            validRecords++;
+          }
+        }
+      } catch (error) {
+        addLogEntry(`Error parsing line ${j + 1} in ${fileName}: ${error.message}`, 'error');
+      }
+    }
+    
+    addLogEntry(`Successfully parsed ${validRecords} valid records from ${fileName}`, 'success');
+    return fileData;
+  };
+
+  const handleRLDFileProcessing = async (files) => {
     addLogEntry(t('startingRealRldFileProcessing'), 'info');
     
     try {
@@ -2093,42 +2816,37 @@ const generatePDFReport = (data, timeRange, fileName) => {
           <SidebarSection>
             <SectionTitle>
               <FiFolder />
-              {t('rldFileProcessing')}
+              {t('folderSelection')}
             </SectionTitle>
             
             <ControlCard>
               <CardTitle>
-                <FiFile />
-                {t('upload')}
+                <FiFolder />
+                {t('selectFolder')}
               </CardTitle>
-              <Button onClick={handleFileSelect}>
+              <Button onClick={handleFolderSelect}>
                 <FiUpload />
-                {t('upload')}
+                {t('selectFolder')}
               </Button>
-              {selectedFiles.length > 0 && (
-                <FileCount>{selectedFiles.length} {t('files')} {t('selected')}</FileCount>
+              {isProcessingFolder && (
+                <ProcessingStatus>
+                  <ProcessingSpinner />
+                  {t('processingFolder')}
+                </ProcessingStatus>
               )}
             </ControlCard>
 
             <ControlCard>
               <CardTitle>
-                <FiCpu />
-                {t('process')}
+                <FiMonitor />
+                {t('systemStatus')}
               </CardTitle>
-              <Button 
-                onClick={handleProcessFiles}
-                disabled={isProcessing || selectedFiles.length === 0}
-              >
-                {isProcessing ? <FiPause /> : <FiPlay />}
-                {isProcessing ? t('processing') : t('process')}
-              </Button>
-            </ControlCard>
-
-            <ControlCard>
-                          <CardTitle>
-              <FiMonitor />
-              {t('systemStatus')}
-            </CardTitle>
+              <StatusItem>
+                <span>Backend Service</span>
+                <StatusValue color={backendStatus === 'healthy' ? '#238636' : backendStatus === 'unavailable' ? '#da3633' : '#f5a623'}>
+                  {backendStatus === 'healthy' ? 'Online' : backendStatus === 'unavailable' ? 'Offline' : 'Checking...'}
+                </StatusValue>
+              </StatusItem>
               <StatusItem>
                 <span>{t('activeSensors')}</span>
                 <StatusValue color="#1f6feb">10</StatusValue>
@@ -2768,6 +3486,74 @@ const generatePDFReport = (data, timeRange, fileName) => {
         </EnlargedGraphModal>
       )}
 
+      {/* File Selection Panel */}
+      {showFileSelectionPanel && (
+        <FileSelectionModal>
+          <FileSelectionContent>
+            <FileSelectionHeader>
+              <FileSelectionTitle>
+                <FiFolder />
+                {t('fileSelectionPanel')}
+              </FileSelectionTitle>
+              <FileSelectionCloseButton onClick={() => setShowFileSelectionPanel(false)}>
+                {t('closeAnalysisWindow')}
+              </FileSelectionCloseButton>
+            </FileSelectionHeader>
+
+            <FileListContainer>
+              <div style={{ marginBottom: '20px', color: '#8b949e', fontSize: '14px' }}>
+                {t('selectUpToTenFiles')}
+              </div>
+              
+              {convertedFiles.map((file) => (
+                <FileItem 
+                  key={file.id} 
+                  selected={file.selected}
+                  onClick={() => handleFileSelection(file.id)}
+                >
+                  <FileCheckbox
+                    type="checkbox"
+                    checked={file.selected}
+                    onChange={() => handleFileSelection(file.id)}
+                  />
+                  <FileInfo>
+                    <FileName>{file.name}</FileName>
+                    <FileDetails>
+                      <span>{t('timestamp')}: {new Date(file.timestamp).toLocaleString()}</span>
+                      <span>{t('fileSize')}: {(file.size / 1024).toFixed(2)} KB</span>
+                    </FileDetails>
+                  </FileInfo>
+                </FileItem>
+              ))}
+            </FileListContainer>
+
+            <FileSelectionFooter>
+              <SelectionControls>
+                <SelectionButton variant="secondary" onClick={handleSelectAll}>
+                  {t('selectAll')}
+                </SelectionButton>
+                <SelectionButton variant="secondary" onClick={handleDeselectAll}>
+                  {t('deselectAll')}
+                </SelectionButton>
+              </SelectionControls>
+              
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <span style={{ color: '#8b949e', fontSize: '12px' }}>
+                  {convertedFiles.filter(f => f.selected).length} / {Math.min(convertedFiles.length, 10)} {t('selectedFiles')}
+                </span>
+                <SelectionButton 
+                  onClick={handleProcessSelectedFiles}
+                  disabled={convertedFiles.filter(f => f.selected).length === 0 || convertedFiles.filter(f => f.selected).length > 10}
+                >
+                  <FiPlay />
+                  {t('processSelectedFiles')}
+                </SelectionButton>
+              </div>
+            </FileSelectionFooter>
+          </FileSelectionContent>
+        </FileSelectionModal>
+      )}
+
       {/* Settings Panel */}
       {showSettings && (
         <>
@@ -2787,6 +3573,68 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 ×
               </SettingsCloseButton>
             </SettingsHeader>
+
+            <SettingsSection>
+              <SettingsSectionTitle>
+                <FiDatabase />
+                {t('nrgApiConfiguration')}
+              </SettingsSectionTitle>
+              
+                            <SensorUnitCard>
+                <SensorUnitName>{t('clientId')}</SensorUnitName>
+                <ConfigInput
+                  type="text"
+                  value={nrgConfig.client_id}
+                  onChange={(e) => setNrgConfig(prev => ({ ...prev, client_id: e.target.value }))}
+                  placeholder={t('enterClientId')}
+                />
+              </SensorUnitCard>
+              
+              <SensorUnitCard>
+                <SensorUnitName>{t('clientSecret')}</SensorUnitName>
+                <ConfigInput
+                  type="password"
+                  value={nrgConfig.client_secret}
+                  onChange={(e) => setNrgConfig(prev => ({ ...prev, client_secret: e.target.value }))}
+                  placeholder={t('enterClientSecret')}
+                />
+              </SensorUnitCard>
+              
+              <SensorUnitCard>
+                <SensorUnitName>{t('fileFilter')}</SensorUnitName>
+                <UnitSelect
+                  value={nrgConfig.file_filter}
+                  onChange={(e) => setNrgConfig(prev => ({ ...prev, file_filter: e.target.value }))}
+                >
+                  <option value="000110">000110</option>
+                  <option value="000111">000111</option>
+                  <option value="000112">000112</option>
+                  <option value="">{t('allFiles')}</option>
+                </UnitSelect>
+                <HelpText>{t('fileFilterExplanation')}</HelpText>
+                <HelpText>{t('fileFilterHelp')}</HelpText>
+              </SensorUnitCard>
+              
+              <SensorUnitCard>
+                <SensorUnitName>{t('startDate')} (YYYY-MM-DD)</SensorUnitName>
+                <ConfigInput
+                  type="text"
+                  value={nrgConfig.start_date}
+                  onChange={(e) => setNrgConfig(prev => ({ ...prev, start_date: e.target.value }))}
+                  placeholder={t('startDatePlaceholder')}
+                />
+              </SensorUnitCard>
+              
+              <SensorUnitCard>
+                <SensorUnitName>{t('endDate')} (YYYY-MM-DD)</SensorUnitName>
+                <ConfigInput
+                  type="text"
+                  value={nrgConfig.end_date}
+                  onChange={(e) => setNrgConfig(prev => ({ ...prev, end_date: e.target.value }))}
+                  placeholder={t('endDatePlaceholder')}
+                />
+              </SensorUnitCard>
+            </SettingsSection>
 
             <SettingsSection>
               <SettingsSectionTitle>
@@ -2817,6 +3665,12 @@ const generatePDFReport = (data, timeRange, fileName) => {
               ))}
             </SettingsSection>
 
+            {settingsSaveStatus.message && (
+              <SettingsStatus type={settingsSaveStatus.type}>
+                {settingsSaveStatus.message}
+              </SettingsStatus>
+            )}
+            
             <ButtonGroup>
               <SettingsButton onClick={saveSettings}>
                 <FiDownload />
