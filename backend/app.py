@@ -65,8 +65,13 @@ app.config['TEMP_FOLDER'] = TEMP_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
 
 # Create database tables
-with app.app_context():
-    db.create_all()
+try:
+    with app.app_context():
+        db.create_all()
+        logger.info("Database tables created successfully")
+except Exception as e:
+    logger.error(f"Error creating database tables: {e}")
+    # Continue without database for now
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
@@ -88,57 +93,85 @@ def cleanup_temp_files():
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'service': 'nrgpy-rld-converter',
-        'timestamp': datetime.now().isoformat(),
-        'database': 'connected' if db.engine.pool.checkedin() > 0 else 'disconnected'
-    })
+    try:
+        # Test database connection
+        db_status = 'connected'
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(db.text('SELECT 1'))
+        except Exception as e:
+            db_status = f'disconnected: {str(e)}'
+            logger.warning(f"Database connection test failed: {e}")
+        
+        return jsonify({
+            'status': 'healthy',
+            'service': 'nrgpy-rld-converter',
+            'timestamp': datetime.now().isoformat(),
+            'database': db_status
+        })
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return jsonify({
+            'status': 'unhealthy',
+            'service': 'nrgpy-rld-converter',
+            'timestamp': datetime.now().isoformat(),
+            'error': str(e)
+        }), 500
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
-    session_id = request.args.get('session_id')
-    if not session_id:
-        return jsonify({'error': 'Session ID required'}), 400
-    
-    config = UserConfig.query.filter_by(session_id=session_id).first()
-    if config:
-        return jsonify(config.to_dict())
-    else:
-        return jsonify({'nrg_config': {}, 'sensor_units': {}})
+    try:
+        session_id = request.args.get('session_id')
+        if not session_id:
+            return jsonify({'error': 'Session ID required'}), 400
+        
+        config = UserConfig.query.filter_by(session_id=session_id).first()
+        if config:
+            return jsonify(config.to_dict())
+        else:
+            return jsonify({'nrg_config': {}, 'sensor_units': {}})
+    except Exception as e:
+        logger.error(f"Error getting configuration: {e}")
+        return jsonify({'error': 'Failed to get configuration', 'details': str(e)}), 500
 
 @app.route('/api/config', methods=['POST'])
 def save_config():
-    session_id = request.json.get('session_id')
-    nrg_config = request.json.get('nrg_config', {})
-    sensor_units = request.json.get('sensor_units', {})
-    
-    if not session_id:
-        return jsonify({'error': 'Session ID required'}), 400
-    
-    config = UserConfig.query.filter_by(session_id=session_id).first()
-    
-    if config:
-        # Update existing config
-        config.nrg_config = json.dumps(nrg_config)
-        config.sensor_units = json.dumps(sensor_units)
-        config.updated_at = datetime.utcnow()
-    else:
-        # Create new config
-        config = UserConfig(
-            session_id=session_id,
-            nrg_config=json.dumps(nrg_config),
-            sensor_units=json.dumps(sensor_units)
-        )
-        db.session.add(config)
-    
     try:
-        db.session.commit()
-        return jsonify({'message': 'Configuration saved successfully', 'config': config.to_dict()})
+        session_id = request.json.get('session_id')
+        nrg_config = request.json.get('nrg_config', {})
+        sensor_units = request.json.get('sensor_units', {})
+        
+        if not session_id:
+            return jsonify({'error': 'Session ID required'}), 400
+        
+        config = UserConfig.query.filter_by(session_id=session_id).first()
+        
+        if config:
+            # Update existing config
+            config.nrg_config = json.dumps(nrg_config)
+            config.sensor_units = json.dumps(sensor_units)
+            config.updated_at = datetime.utcnow()
+        else:
+            # Create new config
+            config = UserConfig(
+                session_id=session_id,
+                nrg_config=json.dumps(nrg_config),
+                sensor_units=json.dumps(sensor_units)
+            )
+            db.session.add(config)
+        
+        try:
+            db.session.commit()
+            logger.info(f"Configuration saved successfully for session: {session_id}")
+            return jsonify({'message': 'Configuration saved successfully', 'config': config.to_dict()})
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Database error saving configuration: {e}")
+            return jsonify({'error': 'Database error saving configuration', 'details': str(e)}), 500
+            
     except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error saving configuration: {e}")
-        return jsonify({'error': 'Failed to save configuration'}), 500
+        logger.error(f"Error in save_config: {e}")
+        return jsonify({'error': 'Failed to save configuration', 'details': str(e)}), 500
 
 @app.route('/convert-rld', methods=['POST'])
 def convert_rld():
