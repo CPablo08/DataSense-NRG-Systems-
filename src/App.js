@@ -1341,17 +1341,14 @@ const App = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('idle');
   
-  // NRG API Configuration
+  // NRG API Configuration (hardcoded for testing)
   const [nrgConfig, setNrgConfig] = useState({
-    client_id: '',
-    client_secret: '',
+    client_id: 'your_client_id_here',
+    client_secret: 'your_client_secret_here',
     file_filter: '000110',
     start_date: '',
     end_date: ''
   });
-  
-  // Backend service status
-  const [backendStatus, setBackendStatus] = useState('unknown');
   
   // Folder selection workflow
   const [showFileSelectionPanel, setShowFileSelectionPanel] = useState(false);
@@ -1404,55 +1401,9 @@ const App = () => {
     }
   }, []);
 
-  // Generate or get session ID
-  const getSessionId = () => {
-    let sessionId = localStorage.getItem('datasenseSessionId');
-    if (!sessionId) {
-      sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('datasenseSessionId', sessionId);
-    }
-    return sessionId;
-  };
 
-  // Load configuration from server with localStorage fallback
-  useEffect(() => {
-    const loadConfiguration = async () => {
-      const sessionId = getSessionId();
-      
-      try {
-        // Try to load from server first
-        const serverConfig = await apiService.loadConfiguration(sessionId);
-        
-        if (serverConfig.nrg_config && Object.keys(serverConfig.nrg_config).length > 0) {
-          setNrgConfig(serverConfig.nrg_config);
-          addLogEntry('Configuration loaded from server', 'info');
-        }
-        
-        if (serverConfig.sensor_units && Object.keys(serverConfig.sensor_units).length > 0) {
-          setSensorUnits(serverConfig.sensor_units);
-          addLogEntry('Sensor units loaded from server', 'info');
-        }
-        
-      } catch (error) {
-        console.log('Server configuration not available, using localStorage fallback');
-        
-        // Fallback to localStorage
-        const savedNrgConfig = localStorage.getItem('datasenseNrgConfig');
-        if (savedNrgConfig) {
-          try {
-            const config = JSON.parse(savedNrgConfig);
-            setNrgConfig(config);
-            addLogEntry('NRG configuration loaded from localStorage', 'info');
-          } catch (error) {
-            console.error('Error loading NRG configuration:', error);
-            addLogEntry('Error loading saved NRG configuration', 'error');
-          }
-        }
-      }
-    };
 
-    loadConfiguration();
-  }, []);
+
 
   // Save library files to localStorage whenever they change
   useEffect(() => {
@@ -1523,38 +1474,16 @@ const App = () => {
     };
     setSensorUnits(defaultUnits);
     
-    // Reset NRG configuration to defaults
-    const defaultNrgConfig = {
-      client_id: '',
-      client_secret: '',
-      file_filter: '000110',
-      start_date: '',
-      end_date: ''
-    };
-    setNrgConfig(defaultNrgConfig);
-    
-    addLogEntry('All settings reset to defaults', 'info');
+    addLogEntry('Sensor units reset to defaults', 'info');
   };
 
   const saveSettings = async () => {
     try {
-      const sessionId = getSessionId();
-      
-      // Save to server
-      try {
-        await apiService.saveConfiguration(sessionId, nrgConfig, sensorUnits);
-        addLogEntry('Settings saved to server', 'success');
-      } catch (serverError) {
-        console.log('Server save failed, using localStorage only:', serverError);
-        addLogEntry('Server unavailable, using local storage', 'warning');
-      }
-      
-      // Always save to localStorage as backup
+      // Save sensor units to localStorage only
       localStorage.setItem('datasenseSensorUnits', JSON.stringify(sensorUnits));
-      localStorage.setItem('datasenseNrgConfig', JSON.stringify(nrgConfig));
       
       setSettingsSaveStatus({ type: 'success', message: 'Settings saved successfully!' });
-      addLogEntry('All settings saved successfully', 'success');
+      addLogEntry('Sensor units saved successfully', 'success');
       
       // Clear status after 3 seconds
       setTimeout(() => {
@@ -1593,22 +1522,10 @@ const App = () => {
       lastUpdate: new Date().toLocaleTimeString()
     });
     
-    // Check backend service health
-    checkBackendHealth();
+
   }, []);
   
-  // Check backend service health
-  const checkBackendHealth = async () => {
-    try {
-      addLogEntry('Checking backend service health...', 'info');
-      const health = await apiService.checkHealth();
-      setBackendStatus('healthy');
-      addLogEntry('Backend service is healthy', 'success');
-    } catch (error) {
-      setBackendStatus('unavailable');
-      addLogEntry(`Backend service unavailable: ${error.message}`, 'error');
-    }
-  };
+
 
 
 
@@ -1779,19 +1696,7 @@ const App = () => {
     addLogEntry('Starting folder processing...', 'info');
     
     try {
-      // Check if NRG credentials are configured
-      if (!nrgConfig.client_id || !nrgConfig.client_secret) {
-        addLogEntry('NRG API credentials not configured. Please set Client ID and Client Secret.', 'error');
-        setIsProcessingFolder(false);
-        return;
-      }
 
-      // Check backend service status
-      if (backendStatus !== 'healthy') {
-        addLogEntry('Backend service is not available. Please ensure the Python backend is running.', 'error');
-        setIsProcessingFolder(false);
-        return;
-      }
 
       // Filter RLD files
       const rldFiles = files.filter(file => file.name.toLowerCase().endsWith('.rld'));
@@ -1912,17 +1817,10 @@ const App = () => {
       return;
     }
 
-    // Check if NRG credentials are configured
-    if (!nrgConfig.client_id || !nrgConfig.client_secret) {
-      addLogEntry('NRG API credentials not configured. Please set Client ID and Client Secret.', 'error');
-      return;
-    }
+
 
     // Check backend service status
-    if (backendStatus !== 'healthy') {
-      addLogEntry('Backend service is not available. Please ensure the Python backend is running.', 'error');
-      return;
-    }
+
 
     setIsProcessing(true);
     setProcessingStatus('processing');
@@ -2841,12 +2739,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 <FiMonitor />
                 {t('systemStatus')}
               </CardTitle>
-              <StatusItem>
-                <span>Backend Service</span>
-                <StatusValue color={backendStatus === 'healthy' ? '#238636' : backendStatus === 'unavailable' ? '#da3633' : '#f5a623'}>
-                  {backendStatus === 'healthy' ? 'Online' : backendStatus === 'unavailable' ? 'Offline' : 'Checking...'}
-                </StatusValue>
-              </StatusItem>
+
               <StatusItem>
                 <span>{t('activeSensors')}</span>
                 <StatusValue color="#1f6feb">10</StatusValue>
@@ -3574,67 +3467,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
               </SettingsCloseButton>
             </SettingsHeader>
 
-            <SettingsSection>
-              <SettingsSectionTitle>
-                <FiDatabase />
-                {t('nrgApiConfiguration')}
-              </SettingsSectionTitle>
-              
-                            <SensorUnitCard>
-                <SensorUnitName>{t('clientId')}</SensorUnitName>
-                <ConfigInput
-                  type="text"
-                  value={nrgConfig.client_id}
-                  onChange={(e) => setNrgConfig(prev => ({ ...prev, client_id: e.target.value }))}
-                  placeholder={t('enterClientId')}
-                />
-              </SensorUnitCard>
-              
-              <SensorUnitCard>
-                <SensorUnitName>{t('clientSecret')}</SensorUnitName>
-                <ConfigInput
-                  type="password"
-                  value={nrgConfig.client_secret}
-                  onChange={(e) => setNrgConfig(prev => ({ ...prev, client_secret: e.target.value }))}
-                  placeholder={t('enterClientSecret')}
-                />
-              </SensorUnitCard>
-              
-              <SensorUnitCard>
-                <SensorUnitName>{t('fileFilter')}</SensorUnitName>
-                <UnitSelect
-                  value={nrgConfig.file_filter}
-                  onChange={(e) => setNrgConfig(prev => ({ ...prev, file_filter: e.target.value }))}
-                >
-                  <option value="000110">000110</option>
-                  <option value="000111">000111</option>
-                  <option value="000112">000112</option>
-                  <option value="">{t('allFiles')}</option>
-                </UnitSelect>
-                <HelpText>{t('fileFilterExplanation')}</HelpText>
-                <HelpText>{t('fileFilterHelp')}</HelpText>
-              </SensorUnitCard>
-              
-              <SensorUnitCard>
-                <SensorUnitName>{t('startDate')} (YYYY-MM-DD)</SensorUnitName>
-                <ConfigInput
-                  type="text"
-                  value={nrgConfig.start_date}
-                  onChange={(e) => setNrgConfig(prev => ({ ...prev, start_date: e.target.value }))}
-                  placeholder={t('startDatePlaceholder')}
-                />
-              </SensorUnitCard>
-              
-              <SensorUnitCard>
-                <SensorUnitName>{t('endDate')} (YYYY-MM-DD)</SensorUnitName>
-                <ConfigInput
-                  type="text"
-                  value={nrgConfig.end_date}
-                  onChange={(e) => setNrgConfig(prev => ({ ...prev, end_date: e.target.value }))}
-                  placeholder={t('endDatePlaceholder')}
-                />
-              </SensorUnitCard>
-            </SettingsSection>
+
 
             <SettingsSection>
               <SettingsSectionTitle>
