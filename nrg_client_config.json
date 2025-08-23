@@ -1,0 +1,20 @@
+{
+  "email": {
+    "server": "your_email_server.com",
+    "username": "your_email@domain.com",
+    "password": "your_password",
+    "search_text": "SymphoniePRO Logger data attached.",
+    "mail_folder": "INBOX",
+    "file_extension": ".rld",
+    "download_folder": "./downloads",
+    "delete_emails": false,
+    "store_password": false
+  },
+  "nrg": {
+    "output_folder": "./converted",
+    "file_filter": "000110"
+  },
+  "api_url": "http://localhost:5000",
+  "monitor_interval": 300,
+  "max_files_per_batch": 10
+}

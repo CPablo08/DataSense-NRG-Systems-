@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # NRG DataSense Platform - Complete Startup Script
-# This script starts all components of the platform
+# This script starts all components: Backend, Frontend, and Local Client
 
 set -e  # Exit on any error
 
@@ -16,160 +16,124 @@ NC='\033[0m' # No Color
 BACKEND_PORT=5000
 FRONTEND_PORT=3000
 API_URL="http://localhost:${BACKEND_PORT}"
+FRONTEND_URL="http://localhost:${FRONTEND_PORT}"
 
-# Function to print colored output
-print_status() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
+echo -e "${BLUE}🚀 NRG DataSense Platform - Complete Startup${NC}"
+echo "=================================================="
 
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Function to check if a port is in use
+# Function to check if port is in use
 check_port() {
     local port=$1
     if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
-        return 0  # Port is in use
+        echo -e "${YELLOW}⚠️  Port $port is already in use${NC}"
+        return 1
     else
-        return 1  # Port is free
+        echo -e "${GREEN}✅ Port $port is available${NC}"
+        return 0
     fi
 }
 
-# Function to kill process on port
-kill_port() {
-    local port=$1
-    if check_port $port; then
-        print_warning "Port $port is in use. Killing existing process..."
-        lsof -ti:$port | xargs kill -9 2>/dev/null || true
+# Function to wait for service to be ready
+wait_for_service() {
+    local url=$1
+    local service_name=$2
+    local max_attempts=30
+    local attempt=1
+    
+    echo -e "${BLUE}⏳ Waiting for $service_name to be ready...${NC}"
+    
+    while [ $attempt -le $max_attempts ]; do
+        if curl -s "$url" >/dev/null 2>&1; then
+            echo -e "${GREEN}✅ $service_name is ready!${NC}"
+            return 0
+        fi
+        
+        echo -n "."
         sleep 2
-    fi
+        attempt=$((attempt + 1))
+    done
+    
+    echo -e "${RED}❌ $service_name failed to start within timeout${NC}"
+    return 1
 }
 
-# Function to check dependencies
-check_dependencies() {
-    print_status "Checking dependencies..."
+# Function to install dependencies
+install_dependencies() {
+    local component=$1
+    local requirements_file=$2
     
-    # Check Node.js
-    if ! command -v node &> /dev/null; then
-        print_error "Node.js is not installed. Please install Node.js first."
-        exit 1
+    echo -e "${BLUE}📦 Installing dependencies for $component...${NC}"
+    
+    if [ "$component" = "frontend" ]; then
+        if [ ! -d "node_modules" ]; then
+            npm install
+            echo -e "${GREEN}✅ Frontend dependencies installed${NC}"
+        else
+            echo -e "${GREEN}✅ Frontend dependencies already installed${NC}"
+        fi
+    elif [ "$component" = "backend" ]; then
+        cd backend
+        if [ ! -d "venv" ]; then
+            python3 -m venv venv
+            echo -e "${GREEN}✅ Virtual environment created${NC}"
+        fi
+        
+        source venv/bin/activate
+        pip install -r requirements.txt
+        cd ..
+        echo -e "${GREEN}✅ Backend dependencies installed${NC}"
+    elif [ "$component" = "local_client" ]; then
+        if [ ! -d "local_client_venv" ]; then
+            python3 -m venv local_client_venv
+            echo -e "${GREEN}✅ Local client virtual environment created${NC}"
+        fi
+        
+        source local_client_venv/bin/activate
+        pip install -r local_client_requirements.txt
+        deactivate
+        echo -e "${GREEN}✅ Local client dependencies installed${NC}"
     fi
-    
-    # Check Python
-    if ! command -v python3 &> /dev/null; then
-        print_error "Python 3 is not installed. Please install Python 3 first."
-        exit 1
-    fi
-    
-    # Check pip
-    if ! command -v pip3 &> /dev/null; then
-        print_error "pip3 is not installed. Please install pip3 first."
-        exit 1
-    fi
-    
-    print_success "All dependencies are installed"
-}
-
-# Function to install frontend dependencies
-install_frontend() {
-    print_status "Installing frontend dependencies..."
-    
-    if [ ! -d "node_modules" ]; then
-        npm install
-        print_success "Frontend dependencies installed"
-    else
-        print_status "Frontend dependencies already installed"
-    fi
-}
-
-# Function to install backend dependencies
-install_backend() {
-    print_status "Installing backend dependencies..."
-    
-    cd backend
-    
-    # Create virtual environment if it doesn't exist
-    if [ ! -d "venv" ]; then
-        print_status "Creating Python virtual environment..."
-        python3 -m venv venv
-    fi
-    
-    # Activate virtual environment
-    source venv/bin/activate
-    
-    # Install dependencies
-    pip install -r requirements.txt
-    
-    cd ..
-    print_success "Backend dependencies installed"
-}
-
-# Function to install local client dependencies
-install_local_client() {
-    print_status "Installing local client dependencies..."
-    
-    # Create virtual environment if it doesn't exist
-    if [ ! -d "local_client_venv" ]; then
-        print_status "Creating Python virtual environment for local client..."
-        python3 -m venv local_client_venv
-    fi
-    
-    # Activate virtual environment
-    source local_client_venv/bin/activate
-    
-    # Install dependencies
-    pip install -r local_client_requirements.txt
-    
-    print_success "Local client dependencies installed"
 }
 
 # Function to start backend
 start_backend() {
-    print_status "Starting FastAPI backend..."
+    echo -e "${BLUE}🐍 Starting FastAPI Backend...${NC}"
     
-    # Kill any existing process on backend port
-    kill_port $BACKEND_PORT
+    if ! check_port $BACKEND_PORT; then
+        echo -e "${RED}❌ Backend port $BACKEND_PORT is already in use${NC}"
+        echo -e "${YELLOW}💡 Try: lsof -ti:$BACKEND_PORT | xargs kill -9${NC}"
+        return 1
+    fi
     
     cd backend
-    
-    # Activate virtual environment
     source venv/bin/activate
     
     # Start backend in background
     nohup python run.py > ../backend.log 2>&1 &
     BACKEND_PID=$!
+    echo $BACKEND_PID > ../backend.pid
     
     cd ..
     
-    # Wait for backend to start
-    print_status "Waiting for backend to start..."
-    for i in {1..30}; do
-        if curl -s http://localhost:$BACKEND_PORT/health > /dev/null 2>&1; then
-            print_success "Backend started successfully on port $BACKEND_PORT"
-            return 0
-        fi
-        sleep 1
-    done
-    
-    print_error "Backend failed to start"
-    exit 1
+    # Wait for backend to be ready
+    if wait_for_service "$API_URL/health" "Backend"; then
+        echo -e "${GREEN}✅ Backend started successfully (PID: $BACKEND_PID)${NC}"
+        return 0
+    else
+        echo -e "${RED}❌ Backend failed to start${NC}"
+        return 1
+    fi
 }
 
 # Function to start frontend
 start_frontend() {
-    print_status "Starting React frontend..."
+    echo -e "${BLUE}⚛️  Starting React Frontend...${NC}"
     
-    # Kill any existing process on frontend port
-    kill_port $FRONTEND_PORT
+    if ! check_port $FRONTEND_PORT; then
+        echo -e "${RED}❌ Frontend port $FRONTEND_PORT is already in use${NC}"
+        echo -e "${YELLOW}💡 Try: lsof -ti:$FRONTEND_PORT | xargs kill -9${NC}"
+        return 1
+    fi
     
     # Set environment variable for API URL
     export REACT_APP_API_URL=$API_URL
@@ -177,123 +141,109 @@ start_frontend() {
     # Start frontend in background
     nohup npm start > frontend.log 2>&1 &
     FRONTEND_PID=$!
+    echo $FRONTEND_PID > frontend.pid
     
-    # Wait for frontend to start
-    print_status "Waiting for frontend to start..."
-    for i in {1..30}; do
-        if curl -s http://localhost:$FRONTEND_PORT > /dev/null 2>&1; then
-            print_success "Frontend started successfully on port $FRONTEND_PORT"
-            return 0
-        fi
-        sleep 1
-    done
-    
-    print_error "Frontend failed to start"
-    exit 1
+    # Wait for frontend to be ready
+    if wait_for_service "$FRONTEND_URL" "Frontend"; then
+        echo -e "${GREEN}✅ Frontend started successfully (PID: $FRONTEND_PID)${NC}"
+        return 0
+    else
+        echo -e "${RED}❌ Frontend failed to start${NC}"
+        return 1
+    fi
 }
 
 # Function to start local client
 start_local_client() {
-    print_status "Starting local NRG client..."
+    echo -e "${BLUE}📧 Starting Local NRG Client...${NC}"
     
     # Check if config exists
     if [ ! -f "nrg_client_config.json" ]; then
-        print_warning "Local client config not found. Creating default config..."
-        create_default_config
+        echo -e "${YELLOW}⚠️  No configuration file found. Creating default config...${NC}"
+        python3 local_nrg_client.py &
+        sleep 3
+        pkill -f "local_nrg_client.py"
+        echo -e "${GREEN}✅ Default configuration created. Please edit nrg_client_config.json${NC}"
+        echo -e "${YELLOW}💡 Edit the configuration and run this script again${NC}"
+        return 1
     fi
     
-    # Activate virtual environment
-    source local_client_venv/bin/activate
-    
     # Start local client in background
+    source local_client_venv/bin/activate
     nohup python local_nrg_client.py > local_client.log 2>&1 &
     LOCAL_CLIENT_PID=$!
+    echo $LOCAL_CLIENT_PID > local_client.pid
+    deactivate
     
-    print_success "Local client started successfully"
-}
-
-# Function to create default config
-create_default_config() {
-    cat > nrg_client_config.json << EOF
-{
-  "email": {
-    "server": "your_email_server.com",
-    "username": "your_email@domain.com",
-    "password": "your_password",
-    "search_text": "SymphoniePRO Logger data attached.",
-    "mail_folder": "INBOX",
-    "file_extension": ".rld",
-    "download_folder": "./downloads",
-    "delete_emails": false,
-    "store_password": false
-  },
-  "nrg": {
-    "output_folder": "./converted",
-    "file_filter": "000110"
-  },
-  "api_url": "http://localhost:5000",
-  "monitor_interval": 300,
-  "max_files_per_batch": 10
-}
-EOF
-    print_warning "Please edit nrg_client_config.json with your email settings before starting the local client"
+    echo -e "${GREEN}✅ Local client started successfully (PID: $LOCAL_CLIENT_PID)${NC}"
+    return 0
 }
 
 # Function to show status
 show_status() {
-    echo ""
-    echo "=========================================="
-    echo "🚀 NRG DataSense Platform Status"
-    echo "=========================================="
-    echo ""
+    echo -e "\n${BLUE}📊 Platform Status:${NC}"
+    echo "=================="
     
-    # Backend status
-    if check_port $BACKEND_PORT; then
-        echo -e "${GREEN}✅ Backend${NC}: Running on http://localhost:$BACKEND_PORT"
-        curl -s http://localhost:$BACKEND_PORT/health | python3 -m json.tool 2>/dev/null || echo "  Health check available"
+    # Check backend
+    if [ -f "backend.pid" ] && kill -0 $(cat backend.pid) 2>/dev/null; then
+        echo -e "${GREEN}✅ Backend: Running (PID: $(cat backend.pid))${NC}"
     else
-        echo -e "${RED}❌ Backend${NC}: Not running"
+        echo -e "${RED}❌ Backend: Not running${NC}"
     fi
     
-    # Frontend status
-    if check_port $FRONTEND_PORT; then
-        echo -e "${GREEN}✅ Frontend${NC}: Running on http://localhost:$FRONTEND_PORT"
+    # Check frontend
+    if [ -f "frontend.pid" ] && kill -0 $(cat frontend.pid) 2>/dev/null; then
+        echo -e "${GREEN}✅ Frontend: Running (PID: $(cat frontend.pid))${NC}"
     else
-        echo -e "${RED}❌ Frontend${NC}: Not running"
+        echo -e "${RED}❌ Frontend: Not running${NC}"
     fi
     
-    # Local client status
-    if pgrep -f "local_nrg_client.py" > /dev/null; then
-        echo -e "${GREEN}✅ Local Client${NC}: Running"
+    # Check local client
+    if [ -f "local_client.pid" ] && kill -0 $(cat local_client.pid) 2>/dev/null; then
+        echo -e "${GREEN}✅ Local Client: Running (PID: $(cat local_client.pid))${NC}"
     else
-        echo -e "${RED}❌ Local Client${NC}: Not running"
+        echo -e "${RED}❌ Local Client: Not running${NC}"
     fi
     
-    echo ""
-    echo "📁 Log Files:"
-    echo "  - Backend: backend.log"
-    echo "  - Frontend: frontend.log"
-    echo "  - Local Client: local_client.log"
-    echo ""
-    echo "🔧 Configuration:"
-    echo "  - Local Client: nrg_client_config.json"
-    echo ""
+    echo -e "\n${BLUE}🌐 Access URLs:${NC}"
+    echo "==============="
+    echo -e "${GREEN}Frontend:${NC} $FRONTEND_URL"
+    echo -e "${GREEN}Backend API:${NC} $API_URL"
+    echo -e "${GREEN}Health Check:${NC} $API_URL/health"
+    
+    echo -e "\n${BLUE}📋 Log Files:${NC}"
+    echo "============="
+    echo -e "${GREEN}Backend:${NC} backend.log"
+    echo -e "${GREEN}Frontend:${NC} frontend.log"
+    echo -e "${GREEN}Local Client:${NC} local_client.log"
 }
 
 # Function to stop all services
 stop_all() {
-    print_status "Stopping all services..."
+    echo -e "${YELLOW}🛑 Stopping all services...${NC}"
     
-    # Kill processes
-    pkill -f "python run.py" 2>/dev/null || true
-    pkill -f "npm start" 2>/dev/null || true
-    pkill -f "local_nrg_client.py" 2>/dev/null || true
+    # Stop backend
+    if [ -f "backend.pid" ]; then
+        kill $(cat backend.pid) 2>/dev/null || true
+        rm -f backend.pid
+        echo -e "${GREEN}✅ Backend stopped${NC}"
+    fi
     
-    # Kill processes on specific ports
-    kill_port $BACKEND_PORT
-    kill_port $FRONTEND_PORT
+    # Stop frontend
+    if [ -f "frontend.pid" ]; then
+        kill $(cat frontend.pid) 2>/dev/null || true
+        rm -f frontend.pid
+        echo -e "${GREEN}✅ Frontend stopped${NC}"
+    fi
     
-    print_success "All services stopped"
+    # Stop local client
+    if [ -f "local_client.pid" ]; then
+        kill $(cat local_client.pid) 2>/dev/null || true
+        rm -f local_client.pid
+        echo -e "${GREEN}✅ Local client stopped${NC}"
+    fi
+    
+    echo -e "${GREEN}✅ All services stopped${NC}"
 }
 
 # Function to show logs
@@ -305,128 +255,107 @@ show_logs() {
             if [ -f "backend.log" ]; then
                 tail -f backend.log
             else
-                print_error "Backend log file not found"
+                echo -e "${RED}❌ Backend log file not found${NC}"
             fi
             ;;
         "frontend")
             if [ -f "frontend.log" ]; then
                 tail -f frontend.log
             else
-                print_error "Frontend log file not found"
+                echo -e "${RED}❌ Frontend log file not found${NC}"
             fi
             ;;
-        "local")
+        "local_client")
             if [ -f "local_client.log" ]; then
                 tail -f local_client.log
             else
-                print_error "Local client log file not found"
+                echo -e "${RED}❌ Local client log file not found${NC}"
             fi
             ;;
         *)
-            print_error "Invalid service. Use: backend, frontend, or local"
+            echo -e "${RED}❌ Unknown service: $service${NC}"
+            echo "Usage: $0 logs [backend|frontend|local_client]"
             ;;
     esac
 }
 
-# Function to deploy to Render
-deploy_to_render() {
-    print_status "Preparing for Render deployment..."
+# Main script logic
+case "${1:-start}" in
+    "start")
+        echo -e "${BLUE}🔧 Installing dependencies...${NC}"
+        install_dependencies "frontend" "package.json"
+        install_dependencies "backend" "backend/requirements.txt"
+        install_dependencies "local_client" "local_client_requirements.txt"
+        
+        echo -e "\n${BLUE}🚀 Starting services...${NC}"
+        
+        # Start backend first
+        if start_backend; then
+            # Start frontend
+            if start_frontend; then
+                # Start local client
+                if start_local_client; then
+                    echo -e "\n${GREEN}🎉 All services started successfully!${NC}"
+                    show_status
+                else
+                    echo -e "\n${YELLOW}⚠️  Local client failed to start${NC}"
+                    show_status
+                fi
+            else
+                echo -e "\n${RED}❌ Frontend failed to start${NC}"
+                stop_all
+                exit 1
+            fi
+        else
+            echo -e "\n${RED}❌ Backend failed to start${NC}"
+            exit 1
+        fi
+        ;;
     
-    # Check if git is initialized
-    if [ ! -d ".git" ]; then
-        print_error "Git repository not found. Please initialize git first."
-        exit 1
-    fi
+    "stop")
+        stop_all
+        ;;
     
-    # Check for uncommitted changes
-    if [ -n "$(git status --porcelain)" ]; then
-        print_warning "You have uncommitted changes. Please commit them first."
-        echo "Run: git add . && git commit -m 'Your commit message'"
-        exit 1
-    fi
+    "restart")
+        stop_all
+        sleep 2
+        $0 start
+        ;;
     
-    # Push to GitHub
-    print_status "Pushing to GitHub..."
-    git push origin main
+    "status")
+        show_status
+        ;;
     
-    print_success "Code pushed to GitHub"
-    echo ""
-    echo "🎯 Next Steps for Render Deployment:"
-    echo "1. Go to https://render.com"
-    echo "2. Click 'New +' → 'Blueprint'"
-    echo "3. Connect your GitHub repository"
-    echo "4. Select branch: main"
-    echo "5. Click 'Apply' to deploy"
-    echo ""
-    echo "🔧 Environment Variables to set in Render:"
-    echo "  - REACT_APP_API_URL: https://your-backend-service.onrender.com"
-    echo ""
-    echo "📝 Update local client config with deployed backend URL:"
-    echo "  - Edit nrg_client_config.json"
-    echo "  - Set api_url to your deployed backend URL"
-}
-
-# Main function
-main() {
-    case "${1:-start}" in
-        "start")
-            echo "🚀 Starting NRG DataSense Platform..."
-            echo ""
-            
-            check_dependencies
-            install_frontend
-            install_backend
-            install_local_client
-            start_backend
-            start_frontend
-            start_local_client
-            
-            echo ""
-            print_success "All services started successfully!"
-            show_status
-            ;;
-        "stop")
-            stop_all
-            ;;
-        "status")
-            show_status
-            ;;
-        "logs")
-            show_logs $2
-            ;;
-        "deploy")
-            deploy_to_render
-            ;;
-        "install")
-            check_dependencies
-            install_frontend
-            install_backend
-            install_local_client
-            print_success "All dependencies installed"
-            ;;
-        "config")
-            create_default_config
-            print_success "Default config created. Please edit nrg_client_config.json"
-            ;;
-        *)
-            echo "Usage: $0 {start|stop|status|logs|deploy|install|config}"
-            echo ""
-            echo "Commands:"
-            echo "  start   - Start all services"
-            echo "  stop    - Stop all services"
-            echo "  status  - Show service status"
-            echo "  logs    - Show logs (backend|frontend|local)"
-            echo "  deploy  - Prepare for Render deployment"
-            echo "  install - Install all dependencies"
-            echo "  config  - Create default local client config"
-            echo ""
-            echo "Examples:"
-            echo "  $0 start"
-            echo "  $0 logs backend"
-            echo "  $0 deploy"
-            ;;
-    esac
-}
-
-# Run main function
-main "$@"
+    "logs")
+        show_logs $2
+        ;;
+    
+    "deploy")
+        echo -e "${BLUE}🚀 Deploying to Render...${NC}"
+        echo "1. Push changes to GitHub"
+        echo "2. Go to https://render.com"
+        echo "3. Create new Blueprint"
+        echo "4. Connect your repository"
+        echo "5. Deploy!"
+        echo ""
+        echo -e "${GREEN}✅ Deployment instructions sent to console${NC}"
+        ;;
+    
+    *)
+        echo -e "${BLUE}NRG DataSense Platform - Startup Script${NC}"
+        echo "Usage: $0 [command]"
+        echo ""
+        echo "Commands:"
+        echo "  start     - Start all services (default)"
+        echo "  stop      - Stop all services"
+        echo "  restart   - Restart all services"
+        echo "  status    - Show service status"
+        echo "  logs      - Show logs (backend|frontend|local_client)"
+        echo "  deploy    - Show deployment instructions"
+        echo ""
+        echo "Examples:"
+        echo "  $0 start"
+        echo "  $0 logs backend"
+        echo "  $0 status"
+        ;;
+esac

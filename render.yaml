@@ -31,10 +31,4 @@ services:
     routes:
       - type: rewrite
         source: /*
-        destination: /index.html
-
-databases:
-  - name: nrg-datasense-db
-    databaseName: nrgdatasense
-    user: nrgdatasense
-    plan: starter 
+        destination: /index.html 

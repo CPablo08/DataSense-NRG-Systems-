@@ -2,87 +2,128 @@
 
 ## 📋 **Overview**
 
-This guide explains how to deploy the NRG DataSense Platform on Render and set up the local client for complete functionality.
+This guide explains how to deploy the NRG DataSense Platform to Render with the new architecture:
+- **FastAPI Backend** (Render Web Service)
+- **React Frontend** (Render Static Site)
+- **Local NRG Client** (Your Computer)
 
-## 🏗️ **Architecture Overview**
+## 🏗️ **Architecture on Render**
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Local Client  │    │   FastAPI Backend│    │  React Frontend │
-│   (Your PC)     │    │   (Render)       │    │  (Render)       │
+│   (Your PC)     │───▶│   (Render)       │◀───│  (Render)       │
 │                 │    │                  │    │                 │
-│ • Email Monitor │───▶│ • POST /api/data │◀───│ • File Upload   │
-│ • RLD→TXT Conv  │    │ • Data Storage   │    │ • Visualization │
-│ • Data Process  │    │ • TXT Processing │    │ • Charts/Graphs │
-│ • API Client    │    │ • CSV Generation │    │ • Reports       │
+│ • Email Monitor │    │ • POST /api/data │    │ • Visualization │
+│ • RLD→TXT Conv  │    │ • Data Storage   │    │ • Charts/Graphs │
+│ • Data Process  │    │ • TXT Processing │    │ • Reports       │
+│ • API Client    │    │ • CSV Generation │    │ • File Upload   │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
-## 🎯 **Deployment Strategy**
+## 🚀 **Step 1: Prepare for Deployment**
 
-### **1. Render Deployment (Backend + Frontend)**
-- **FastAPI Backend**: Web service on Render
-- **React Frontend**: Static site on Render
-- **No Database**: Simplified architecture
+### **1.1 Update Local Client Configuration**
 
-### **2. Local Client (Your Computer)**
-- **Email Monitoring**: Runs on your local machine
-- **RLD Conversion**: Uses local NRG software
-- **Data Processing**: Processes and sends data to Render backend
+Before deploying, update your local client to point to the deployed backend:
 
-## 🚀 **Step-by-Step Deployment**
-
-### **Step 1: Prepare Your Code**
-
-1. **Make sure all changes are committed:**
 ```bash
-git add .
-git commit -m "Ready for deployment - new FastAPI architecture"
-git push origin main
-```
-
-2. **Use the startup script to prepare:**
-```bash
-chmod +x start_all.sh
-./start_all.sh deploy
-```
-
-### **Step 2: Deploy to Render**
-
-1. **Go to Render Dashboard:**
-   - Visit: https://render.com
-   - Sign in with your GitHub account
-
-2. **Create Blueprint Deployment:**
-   - Click **"New +"** → **"Blueprint"**
-   - Connect your GitHub repository: `CPablo08/DataSense-NRG-Systems-`
-   - Select branch: **`main`**
-   - Click **"Apply"** to deploy
-
-3. **Wait for Deployment:**
-   - Render will automatically deploy both services
-   - Backend: `nrg-datasense-backend`
-   - Frontend: `nrg-datasense-frontend`
-
-### **Step 3: Configure Local Client**
-
-1. **Create local client configuration:**
-```bash
-./start_all.sh config
-```
-
-2. **Edit the configuration file:**
-```bash
-nano nrg_client_config.json
-```
-
-3. **Update with your settings:**
-```json
+# Edit nrg_client_config.json
 {
   "email": {
     "server": "your_email_server.com",
     "username": "your_email@domain.com",
     "password": "your_password",
+    "search_text": "SymphoniePRO Logger data attached.",
+    "mail_folder": "INBOX",
+    "file_extension": ".rld",
+    "download_folder": "./downloads",
+    "delete_emails": false,
+    "store_password": false
+  },
+  "nrg": {
+    "output_folder": "./converted",
+    "file_filter": "000110"
+  },
+  "api_url": "https://nrg-datasense-backend.onrender.com",  # ← Updated URL
+  "monitor_interval": 300,
+  "max_files_per_batch": 10
+}
+```
+
+### **1.2 Commit and Push Changes**
+
+```bash
+git add .
+git commit -m "Prepare for Render deployment - FastAPI backend"
+git push origin main
+```
+
+## 🚀 **Step 2: Deploy to Render**
+
+### **2.1 Create Render Account**
+
+1. Go to [https://render.com](https://render.com)
+2. Sign up with your GitHub account
+3. Verify your email address
+
+### **2.2 Deploy Using Blueprint**
+
+1. **Click "New +"** → **"Blueprint"**
+2. **Connect Repository**: `CPablo08/DataSense-NRG-Systems-`
+3. **Select Branch**: `main`
+4. **Click "Apply"**
+
+### **2.3 Manual Deployment (Alternative)**
+
+If Blueprint doesn't work, deploy services manually:
+
+#### **Deploy Backend (FastAPI)**
+1. **Click "New +"** → **"Web Service"**
+2. **Connect Repository**: `CPablo08/DataSense-NRG-Systems-`
+3. **Configure**:
+   - **Name**: `nrg-datasense-backend`
+   - **Environment**: `Python`
+   - **Build Command**: `cd backend && pip install -r requirements.txt`
+   - **Start Command**: `cd backend && python run.py`
+   - **Plan**: `Free`
+
+#### **Deploy Frontend (React)**
+1. **Click "New +"** → **"Static Site"**
+2. **Connect Repository**: `CPablo08/DataSense-NRG-Systems-`
+3. **Configure**:
+   - **Name**: `nrg-datasense-frontend`
+   - **Build Command**: `npm install && npm run build`
+   - **Publish Directory**: `build`
+   - **Plan**: `Free`
+
+4. **Add Environment Variable**:
+   - **Key**: `REACT_APP_API_URL`
+   - **Value**: `https://nrg-datasense-backend.onrender.com`
+
+## 🔧 **Step 3: Configure Local Client**
+
+### **3.1 Install Local Dependencies**
+
+```bash
+# Install local client dependencies
+pip install -r local_client_requirements.txt
+
+# Or use the startup script
+chmod +x start_all.sh
+./start_all.sh
+```
+
+### **3.2 Configure Email Settings**
+
+Edit `nrg_client_config.json` with your email settings:
+
+```json
+{
+  "email": {
+    "server": "imap.gmail.com",           // Your email server
+    "username": "your_email@gmail.com",   // Your email
+    "password": "your_app_password",      // Your password
     "search_text": "SymphoniePRO Logger data attached.",
     "mail_folder": "INBOX",
     "file_extension": ".rld",
@@ -100,178 +141,229 @@ nano nrg_client_config.json
 }
 ```
 
-### **Step 4: Start All Services**
+### **3.3 Email Configuration Tips**
 
-1. **Install dependencies and start everything:**
-```bash
-./start_all.sh start
-```
+#### **Gmail Setup**
+1. Enable 2-Factor Authentication
+2. Generate App Password:
+   - Go to Google Account Settings
+   - Security → App Passwords
+   - Generate password for "Mail"
+3. Use App Password in config
 
-2. **Check status:**
+#### **Other Email Providers**
+- **Outlook**: `outlook.office365.com`
+- **Yahoo**: `imap.mail.yahoo.com`
+- **Custom**: Check your email provider's IMAP settings
+
+## 🚀 **Step 4: Start All Services**
+
+### **4.1 Using the Startup Script**
+
 ```bash
+# Make script executable
+chmod +x start_all.sh
+
+# Start all services
+./start_all.sh
+
+# Check status
 ./start_all.sh status
+
+# View logs
+./start_all.sh logs backend
+./start_all.sh logs frontend
+./start_all.sh logs local_client
 ```
 
-## 🔧 **Service URLs**
+### **4.2 Manual Startup**
 
-After deployment, your services will be available at:
+```bash
+# Terminal 1: Start Backend
+cd backend
+python run.py
 
+# Terminal 2: Start Frontend
+npm start
+
+# Terminal 3: Start Local Client
+python local_nrg_client.py
+```
+
+## 🌐 **Step 5: Access Your Platform**
+
+### **Deployed URLs**
 - **Frontend**: `https://nrg-datasense-frontend.onrender.com`
-- **Backend**: `https://nrg-datasense-backend.onrender.com`
+- **Backend API**: `https://nrg-datasense-backend.onrender.com`
 - **Health Check**: `https://nrg-datasense-backend.onrender.com/health`
 
-## 📊 **Data Flow After Deployment**
+### **Local URLs**
+- **Frontend**: `http://localhost:3000`
+- **Backend API**: `http://localhost:5000`
+- **Health Check**: `http://localhost:5000/health`
 
-### **Automatic Data Processing:**
-1. **Local Client** monitors your email for RLD attachments
-2. **Downloads** RLD files to local directory
-3. **Converts** RLD to TXT using local NRG software
-4. **Processes** TXT data and extracts sensor readings
-5. **Sends** processed data to Render backend via API
-6. **Frontend** displays data in real-time
+## 🔍 **Step 6: Testing**
 
-### **Manual TXT Upload:**
-1. **Upload** TXT files directly through the frontend
-2. **Process** files for visualization
-3. **View** charts, graphs, and reports
-
-## 🛠️ **Management Commands**
-
-### **Start All Services:**
+### **6.1 Test Backend**
 ```bash
-./start_all.sh start
+# Test health endpoint
+curl https://nrg-datasense-backend.onrender.com/health
+
+# Expected response:
+{
+  "status": "healthy",
+  "service": "nrg-datasense-api",
+  "timestamp": "2024-01-01T12:00:00",
+  "version": "1.0.0"
+}
 ```
 
-### **Stop All Services:**
+### **6.2 Test Frontend**
+1. Open frontend URL in browser
+2. Upload a TXT file
+3. Verify data visualization works
+
+### **6.3 Test Local Client**
+1. Send an email with RLD attachment
+2. Check local client logs: `./start_all.sh logs local_client`
+3. Verify data appears in frontend
+
+## 🔧 **Step 7: Monitoring & Maintenance**
+
+### **7.1 View Logs**
 ```bash
-./start_all.sh stop
+# View all logs
+./start_all.sh logs backend
+./start_all.sh logs frontend
+./start_all.sh logs local_client
+
+# Or view log files directly
+tail -f backend.log
+tail -f frontend.log
+tail -f local_client.log
 ```
 
-### **Check Status:**
+### **7.2 Check Service Status**
 ```bash
 ./start_all.sh status
 ```
 
-### **View Logs:**
+### **7.3 Restart Services**
 ```bash
-./start_all.sh logs backend    # Backend logs
-./start_all.sh logs frontend   # Frontend logs
-./start_all.sh logs local      # Local client logs
+./start_all.sh restart
 ```
 
-### **Install Dependencies:**
+## 🛠️ **Troubleshooting**
+
+### **Common Issues**
+
+#### **1. Backend Deployment Failed**
+- Check build logs in Render dashboard
+- Verify `backend/requirements.txt` is correct
+- Ensure `backend/run.py` exists and is executable
+
+#### **2. Frontend Can't Connect to Backend**
+- Verify `REACT_APP_API_URL` environment variable
+- Check CORS settings in backend
+- Test backend health endpoint
+
+#### **3. Local Client Connection Failed**
+- Verify `api_url` in `nrg_client_config.json`
+- Check network connectivity
+- Test with `curl` command
+
+#### **4. Email Connection Failed**
+- Verify email server settings
+- Check username/password
+- Enable IMAP access in email settings
+
+### **Debug Commands**
 ```bash
-./start_all.sh install
+# Test backend locally
+cd backend
+python run.py
+
+# Test frontend locally
+npm start
+
+# Test local client
+python local_nrg_client.py
+
+# Check all processes
+ps aux | grep -E "(python|node)" | grep -v grep
 ```
 
-## 🔍 **Troubleshooting**
+## 📊 **Performance Monitoring**
 
-### **Common Issues:**
+### **Render Dashboard**
+- Monitor service health
+- Check response times
+- View error logs
+- Monitor resource usage
 
-1. **Backend Not Starting:**
-   ```bash
-   ./start_all.sh logs backend
-   ```
-   - Check if port 5000 is available
-   - Verify Python dependencies are installed
-
-2. **Frontend Not Starting:**
-   ```bash
-   ./start_all.sh logs frontend
-   ```
-   - Check if port 3000 is available
-   - Verify Node.js dependencies are installed
-
-3. **Local Client Issues:**
-   ```bash
-   ./start_all.sh logs local
-   ```
-   - Check email configuration
-   - Verify NRG software is installed
-   - Check API URL in config
-
-4. **Render Deployment Issues:**
-   - Check Render logs in dashboard
-   - Verify environment variables
-   - Check build commands
-
-### **Email Configuration Issues:**
-
-1. **IMAP Access:**
-   - Enable IMAP in your email settings
-   - Use app-specific passwords if 2FA is enabled
-
-2. **Server Settings:**
-   - Gmail: `imap.gmail.com`
-   - Outlook: `outlook.office365.com`
-   - Yahoo: `imap.mail.yahoo.com`
-
-### **NRG Software Issues:**
-
-1. **Installation:**
-   - Ensure NRG software is installed on your machine
-   - Verify `nrgpy` library is working
-
-2. **File Permissions:**
-   - Check write permissions for download and output folders
-   - Ensure RLD files are accessible
-
-## 🔄 **Updating After Changes**
-
-1. **Commit and push changes:**
+### **Local Monitoring**
 ```bash
+# Check service status
+./start_all.sh status
+
+# Monitor logs in real-time
+./start_all.sh logs backend &
+./start_all.sh logs frontend &
+./start_all.sh logs local_client &
+```
+
+## 🔄 **Updates and Maintenance**
+
+### **Update Deployed Services**
+```bash
+# Push changes to GitHub
 git add .
 git commit -m "Update description"
 git push origin main
+
+# Render will automatically redeploy
 ```
 
-2. **Render will automatically redeploy** (if auto-deploy is enabled)
-
-3. **Update local client if needed:**
+### **Update Local Client**
 ```bash
-./start_all.sh stop
-./start_all.sh start
+# Pull latest changes
+git pull origin main
+
+# Restart local client
+./start_all.sh restart
 ```
 
-## 📈 **Monitoring and Maintenance**
+## 💰 **Cost Considerations**
 
-### **Health Checks:**
-- **Backend**: `https://nrg-datasense-backend.onrender.com/health`
-- **Frontend**: Check if accessible in browser
-- **Local Client**: Check logs for activity
+### **Render Free Tier**
+- **Backend**: 750 hours/month (free)
+- **Frontend**: Unlimited (free)
+- **Bandwidth**: 100GB/month (free)
 
-### **Log Monitoring:**
-```bash
-# Monitor all logs in real-time
-tail -f backend.log frontend.log local_client.log
-```
+### **Scaling Options**
+- **Starter Plan**: $7/month per service
+- **Standard Plan**: $25/month per service
+- **Pro Plan**: $50/month per service
 
-### **Performance Monitoring:**
-- **Render Dashboard**: Monitor service performance
-- **Local Client**: Check processing times in logs
-- **Email Monitoring**: Verify attachment downloads
+## 🎯 **Success Checklist**
 
-## 🎯 **Benefits of This Architecture**
-
-✅ **Cost Effective**: No database costs, minimal API usage
-✅ **Reliable**: Local processing, no external dependencies
-✅ **Scalable**: Easy to add more local clients
-✅ **Secure**: Sensitive data stays local until processed
-✅ **Fast**: Local RLD conversion is much faster
-✅ **Simple**: Clear separation of concerns
+- [ ] Backend deployed and healthy
+- [ ] Frontend deployed and accessible
+- [ ] Local client configured and running
+- [ ] Email monitoring working
+- [ ] RLD to TXT conversion working
+- [ ] Data visualization working
+- [ ] All services communicating properly
 
 ## 📞 **Support**
 
-For issues or questions:
-1. Check the logs using `./start_all.sh logs [service]`
-2. Verify configuration settings
+If you encounter issues:
+1. Check the logs: `./start_all.sh logs [service]`
+2. Verify configuration files
 3. Test each component individually
 4. Check Render dashboard for deployment issues
+5. Review this deployment guide
 
-## 🚀 **Next Steps**
+---
 
-After successful deployment:
-1. **Test the platform** with sample TXT files
-2. **Configure email monitoring** with your email settings
-3. **Set up automatic data processing** with RLD files
-4. **Monitor the system** for optimal performance
+**🎉 Congratulations! Your NRG DataSense Platform is now deployed and running!**
