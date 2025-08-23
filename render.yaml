@@ -1,34 +1,26 @@
 services:
-  # Backend API Service
+  # FastAPI Backend Service
   - type: web
     name: nrg-datasense-backend
     env: python
-    plan: starter
+    plan: free
     buildCommand: |
       cd backend
       pip install -r requirements.txt
     startCommand: |
       cd backend
-      python3 run.py
+      python run.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.0
-      - key: FLASK_ENV
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: nrg-datasense-db
-          property: connectionString
-      - key: NRG_CLIENT_ID
-        sync: false
-      - key: NRG_CLIENT_SECRET
-        sync: false
+      - key: PORT
+        value: 5000
 
-  # Frontend Static Site
+  # React Frontend Service
   - type: web
     name: nrg-datasense-frontend
     env: static
-    plan: starter
+    plan: free
     buildCommand: |
       npm install
       npm run build
