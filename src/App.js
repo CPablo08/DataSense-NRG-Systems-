@@ -599,171 +599,11 @@ const EnlargedGraphModal = styled.div`
   flex-direction: column;
 `;
 
-const FileSelectionModal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: #0d1117;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-`;
 
-const FileSelectionContent = styled.div`
-  background: #0d1117;
-  flex: 1;
-  padding: 20px;
-  overflow: hidden;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-`;
 
-const FileSelectionHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #30363d;
-  background: #161b22;
-`;
 
-const FileSelectionTitle = styled.h2`
-  color: #fff;
-  margin: 0;
-  font-size: 24px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-`;
 
-const FileSelectionCloseButton = styled.button`
-  background: #21262d;
-  border: 1px solid #30363d;
-  color: #fff;
-  padding: 10px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  
-  &:hover {
-    background: #30363d;
-  }
-`;
 
-const FileListContainer = styled.div`
-  flex: 1;
-  padding: 20px;
-  overflow-y: auto;
-  background: #161b22;
-  margin: 20px;
-  border-radius: 8px;
-  border: 1px solid #30363d;
-`;
-
-const FileItem = styled.div`
-  display: flex;
-  align-items: center;
-  padding: 15px;
-  background: ${props => props.selected ? '#1f6feb' : '#21262d'};
-  border: 1px solid ${props => props.selected ? '#1f6feb' : '#30363d'};
-  border-radius: 6px;
-  margin-bottom: 10px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-
-  &:hover {
-    background: ${props => props.selected ? '#1158c7' : '#30363d'};
-    border-color: #1f6feb;
-  }
-`;
-
-const FileCheckbox = styled.input`
-  margin-right: 15px;
-  transform: scale(1.2);
-`;
-
-const FileInfo = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-`;
-
-const FileName = styled.div`
-  font-size: 14px;
-  font-weight: bold;
-  color: #fff;
-  margin-bottom: 5px;
-`;
-
-const FileDetails = styled.div`
-  font-size: 12px;
-  color: #8b949e;
-  display: flex;
-  gap: 20px;
-`;
-
-const FileSelectionFooter = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-top: 1px solid #30363d;
-  background: #161b22;
-`;
-
-const SelectionControls = styled.div`
-  display: flex;
-  gap: 10px;
-`;
-
-const SelectionButton = styled.button`
-  background: ${props => props.variant === 'secondary' ? '#30363d' : '#1f6feb'};
-  border: 1px solid ${props => props.variant === 'secondary' ? '#30363d' : '#1f6feb'};
-  color: #fff;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: ${props => props.variant === 'secondary' ? '#40464d' : '#1158c7'};
-    border-color: ${props => props.variant === 'secondary' ? '#40464d' : '#1158c7'};
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const ProcessingStatus = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #8b949e;
-  font-size: 14px;
-`;
-
-const ProcessingSpinner = styled.div`
-  width: 16px;
-  height: 16px;
-  border: 2px solid #30363d;
-  border-top: 2px solid #1f6feb;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
 
 const HelpText = styled.div`
   font-size: 11px;
@@ -1052,38 +892,32 @@ const translations = {
     reset: 'Reset',
     cancel: 'Cancel',
     // NRG API Configuration translations
-    nrgApiConfiguration: 'NRG API Configuration',
-    clientId: 'Client ID',
-    clientSecret: 'Client Secret',
-    enterClientId: 'Enter NRG Cloud Convert Client ID',
-    enterClientSecret: 'Enter NRG Cloud Convert Client Secret',
-    fileFilter: 'File Filter',
+
     allFiles: 'All Files',
     startDate: 'Start Date',
     endDate: 'End Date',
     startDatePlaceholder: 'e.g., 2024-01-01',
     endDatePlaceholder: 'e.g., 2024-12-31',
     // Folder selection translations
-    selectFolder: 'Select Folder',
+
     folderSelection: 'Folder Selection',
     selectUpToTenFiles: 'Select up to 10 files to process',
     selectedFiles: 'Selected Files',
     noFilesSelected: 'No files selected',
     processSelectedFiles: 'Process Selected Files',
-    fileSelectionPanel: 'File Selection Panel',
+
     timestamp: 'Timestamp',
     fileName: 'File Name',
     fileSize: 'File Size',
     selectAll: 'Select All',
     deselectAll: 'Deselect All',
-    processingFolder: 'Processing folder...',
+
     folderProcessed: 'Folder processed successfully',
     convertingRldToTxt: 'Converting RLD to TXT...',
     convertingTxtToCsv: 'Converting TXT to CSV...',
     readyForSelection: 'Ready for file selection',
     // File filter explanations
-    fileFilterExplanation: 'Filter to process only specific file types (e.g., "000110" for specific station files)',
-    fileFilterHelp: 'Leave empty to process all files, or enter a specific filter pattern'
+
   },
   'es-DO': {
     dashboard: 'Panel Principal',
@@ -1262,38 +1096,32 @@ const translations = {
     fullScreenAnalysis: 'Análisis de Pantalla Completa',
     closeAnalysisWindow: 'Cerrar Ventana de Análisis',
     // NRG API Configuration translations
-    nrgApiConfiguration: 'Configuración de API NRG',
-    clientId: 'ID de Cliente',
-    clientSecret: 'Secreto de Cliente',
-    enterClientId: 'Ingrese ID de Cliente de NRG Cloud Convert',
-    enterClientSecret: 'Ingrese Secreto de Cliente de NRG Cloud Convert',
-    fileFilter: 'Filtro de Archivos',
+
     allFiles: 'Todos los Archivos',
     startDate: 'Fecha de Inicio',
     endDate: 'Fecha de Fin',
     startDatePlaceholder: 'ej., 2024-01-01',
     endDatePlaceholder: 'ej., 2024-12-31',
     // Folder selection translations
-    selectFolder: 'Seleccionar Carpeta',
+
     folderSelection: 'Selección de Carpeta',
     selectUpToTenFiles: 'Seleccione hasta 10 archivos para procesar',
     selectedFiles: 'Archivos Seleccionados',
     noFilesSelected: 'No hay archivos seleccionados',
     processSelectedFiles: 'Procesar Archivos Seleccionados',
-    fileSelectionPanel: 'Panel de Selección de Archivos',
+
     timestamp: 'Marca de Tiempo',
     fileName: 'Nombre del Archivo',
     fileSize: 'Tamaño del Archivo',
     selectAll: 'Seleccionar Todos',
     deselectAll: 'Deseleccionar Todos',
-    processingFolder: 'Procesando carpeta...',
+
     folderProcessed: 'Carpeta procesada exitosamente',
     convertingRldToTxt: 'Convirtiendo RLD a TXT...',
     convertingTxtToCsv: 'Convirtiendo TXT a CSV...',
     readyForSelection: 'Listo para selección de archivos',
     // File filter explanations
-    fileFilterExplanation: 'Filtro para procesar solo tipos específicos de archivos (ej., "000110" para archivos de estación específica)',
-    fileFilterHelp: 'Dejar vacío para procesar todos los archivos, o ingresar un patrón de filtro específico'
+
   }
 };
 
@@ -1341,20 +1169,7 @@ const App = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('idle');
   
-  // NRG API Configuration (hardcoded for testing)
-  const [nrgConfig, setNrgConfig] = useState({
-    client_id: 'your_client_id_here',
-    client_secret: 'your_client_secret_here',
-    file_filter: '000110',
-    start_date: '',
-    end_date: ''
-  });
-  
-  // Folder selection workflow
-  const [showFileSelectionPanel, setShowFileSelectionPanel] = useState(false);
-  const [convertedFiles, setConvertedFiles] = useState([]);
-  const [selectedFilesForProcessing, setSelectedFilesForProcessing] = useState([]);
-  const [isProcessingFolder, setIsProcessingFolder] = useState(false);
+
   
   // Settings save status
   const [settingsSaveStatus, setSettingsSaveStatus] = useState({ type: '', message: '' });
@@ -1664,130 +1479,7 @@ const App = () => {
     return fileData;
   };
 
-  const handleFolderSelect = async () => {
-    try {
-      addLogEntry('Opening folder selection dialog...', 'info');
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.webkitdirectory = true;
-      input.multiple = true;
-      input.accept = '.rld,.txt';
-      
-      input.onchange = async (e) => {
-        const files = Array.from(e.target.files);
-        if (files.length === 0) {
-          addLogEntry('No files selected from folder', 'error');
-          return;
-        }
-        
-        addLogEntry(`Selected folder with ${files.length} files`, 'success');
-        await processFolder(files);
-      };
-      
-      input.click();
-    } catch (error) {
-      addLogEntry(`Error selecting folder: ${error.message}`, 'error');
-      console.error('Error selecting folder:', error);
-    }
-  };
 
-  const processFolder = async (files) => {
-    setIsProcessingFolder(true);
-    addLogEntry('Starting folder processing...', 'info');
-    
-    try {
-
-
-      // Filter RLD files
-      const rldFiles = files.filter(file => file.name.toLowerCase().endsWith('.rld'));
-      
-      if (rldFiles.length === 0) {
-        addLogEntry('No RLD files found in the selected folder', 'error');
-        setIsProcessingFolder(false);
-        return;
-      }
-
-      addLogEntry(`Found ${rldFiles.length} RLD files, starting conversion...`, 'info');
-      
-      // Convert RLD files to TXT
-      addLogEntry(t('convertingRldToTxt'), 'info');
-      const convertedBlob = await apiService.convertFolder(rldFiles, nrgConfig);
-      
-      // Extract TXT files from the ZIP blob
-      const txtFiles = await apiService.extractTxtFilesFromZip(convertedBlob);
-      
-      addLogEntry(`Successfully converted ${txtFiles.length} files from RLD to TXT`, 'success');
-      
-      // Prepare files for selection
-      const filesForSelection = txtFiles.map((txtFile, index) => ({
-        id: index,
-        name: txtFile.name,
-        content: txtFile.content,
-        size: txtFile.size,
-        timestamp: new Date().toISOString(), // You might want to extract this from the file content
-        selected: false
-      }));
-      
-      setConvertedFiles(filesForSelection);
-      setSelectedFilesForProcessing([]);
-      setShowFileSelectionPanel(true);
-      setIsProcessingFolder(false);
-      
-      addLogEntry(t('readyForSelection'), 'success');
-      
-    } catch (error) {
-      addLogEntry(`Folder processing failed: ${error.message}`, 'error');
-      setIsProcessingFolder(false);
-    }
-  };
-
-  const handleFileSelection = (fileId) => {
-    setConvertedFiles(prev => prev.map(file => 
-      file.id === fileId 
-        ? { ...file, selected: !file.selected }
-        : file
-    ));
-  };
-
-  const handleSelectAll = () => {
-    setConvertedFiles(prev => prev.map(file => ({ ...file, selected: true })));
-  };
-
-  const handleDeselectAll = () => {
-    setConvertedFiles(prev => prev.map(file => ({ ...file, selected: false })));
-  };
-
-  const handleProcessSelectedFiles = async () => {
-    const selectedFiles = convertedFiles.filter(file => file.selected);
-    
-    if (selectedFiles.length === 0) {
-      addLogEntry(t('noFilesSelected'), 'error');
-      return;
-    }
-    
-    if (selectedFiles.length > 10) {
-      addLogEntry('Maximum 10 files can be selected for processing', 'error');
-      return;
-    }
-    
-    addLogEntry(`Processing ${selectedFiles.length} selected files...`, 'info');
-    
-    try {
-      // Convert selected files to the format expected by handleTXTFileProcessing
-      const txtFilesForProcessing = selectedFiles.map(file => ({
-        name: file.name,
-        content: file.content,
-        size: file.size
-      }));
-      
-      await handleTXTFileProcessing(txtFilesForProcessing);
-      setShowFileSelectionPanel(false);
-      addLogEntry('Selected files processed successfully', 'success');
-      
-    } catch (error) {
-      addLogEntry(`Error processing selected files: ${error.message}`, 'error');
-    }
-  };
 
   const handleFileSelect = async () => {
     try {
@@ -1795,7 +1487,7 @@ const App = () => {
       const input = document.createElement('input');
       input.type = 'file';
       input.multiple = true;
-      input.accept = '.csv,.xlsx,.json,.txt,.rld,.txt';
+      input.accept = '.txt';
       
       input.onchange = async (e) => {
         const files = Array.from(e.target.files);
@@ -1817,33 +1509,21 @@ const App = () => {
       return;
     }
 
-
-
-    // Check backend service status
-
-
     setIsProcessing(true);
     setProcessingStatus('processing');
     addLogEntry('Starting file processing...', 'info');
     
     try {
-      // Check if files are RLD files
-      const rldFiles = selectedFiles.filter(file => 
-        file.name.toLowerCase().endsWith('.rld')
-      );
-      
+      // Only process TXT files
       const txtFiles = selectedFiles.filter(file => 
         file.name.toLowerCase().endsWith('.txt')
       );
       
-      if (rldFiles.length > 0) {
-        addLogEntry(`Found ${rldFiles.length} RLD files, starting conversion to TXT...`, 'info');
-        await handleRLDToTXTConversion(rldFiles);
-      } else if (txtFiles.length > 0) {
+      if (txtFiles.length > 0) {
         addLogEntry(`Found ${txtFiles.length} TXT files, processing directly...`, 'info');
         await handleTXTFileProcessing(txtFiles);
       } else {
-        addLogEntry('No RLD or TXT files found for processing', 'error');
+        addLogEntry('No TXT files found for processing', 'error');
       }
       
       setProcessingStatus('completed');
@@ -1859,33 +1539,7 @@ const App = () => {
 
 
 
-    const handleRLDToTXTConversion = async (files) => {
-    addLogEntry('Starting RLD to TXT conversion using NRG Cloud Convert API...', 'info');
-    
-    try {
-      // Convert RLD files to TXT using backend service
-      addLogEntry('Uploading RLD files to backend service...', 'info');
-      const convertedBlob = await apiService.convertRLDFiles(files, nrgConfig);
-      
-      addLogEntry('RLD files converted successfully, extracting TXT files...', 'success');
-      
-      // Extract TXT files from the ZIP blob
-      const txtFiles = await apiService.extractTxtFilesFromZip(convertedBlob);
-      
-      addLogEntry(`Extracted ${txtFiles.length} TXT files from conversion`, 'success');
-      
-      // Process the extracted TXT files
-      await handleTXTFileProcessing(txtFiles);
-      
-      // Download the converted files
-      apiService.downloadConvertedFiles(convertedBlob, `converted_rld_files_${new Date().toISOString().split('T')[0]}.zip`);
-      addLogEntry('Converted files downloaded successfully', 'success');
-      
-    } catch (error) {
-      addLogEntry(`RLD to TXT conversion failed: ${error.message}`, 'error');
-      throw error;
-    }
-  };
+
 
   const handleTXTFileProcessing = async (txtFiles) => {
     addLogEntry('Processing TXT files for visualization...', 'info');
@@ -2717,22 +2371,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
               {t('folderSelection')}
             </SectionTitle>
             
-            <ControlCard>
-              <CardTitle>
-                <FiFolder />
-                {t('selectFolder')}
-              </CardTitle>
-              <Button onClick={handleFolderSelect}>
-                <FiUpload />
-                {t('selectFolder')}
-              </Button>
-              {isProcessingFolder && (
-                <ProcessingStatus>
-                  <ProcessingSpinner />
-                  {t('processingFolder')}
-                </ProcessingStatus>
-              )}
-            </ControlCard>
+
 
             <ControlCard>
               <CardTitle>
@@ -3379,73 +3018,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
         </EnlargedGraphModal>
       )}
 
-      {/* File Selection Panel */}
-      {showFileSelectionPanel && (
-        <FileSelectionModal>
-          <FileSelectionContent>
-            <FileSelectionHeader>
-              <FileSelectionTitle>
-                <FiFolder />
-                {t('fileSelectionPanel')}
-              </FileSelectionTitle>
-              <FileSelectionCloseButton onClick={() => setShowFileSelectionPanel(false)}>
-                {t('closeAnalysisWindow')}
-              </FileSelectionCloseButton>
-            </FileSelectionHeader>
 
-            <FileListContainer>
-              <div style={{ marginBottom: '20px', color: '#8b949e', fontSize: '14px' }}>
-                {t('selectUpToTenFiles')}
-              </div>
-              
-              {convertedFiles.map((file) => (
-                <FileItem 
-                  key={file.id} 
-                  selected={file.selected}
-                  onClick={() => handleFileSelection(file.id)}
-                >
-                  <FileCheckbox
-                    type="checkbox"
-                    checked={file.selected}
-                    onChange={() => handleFileSelection(file.id)}
-                  />
-                  <FileInfo>
-                    <FileName>{file.name}</FileName>
-                    <FileDetails>
-                      <span>{t('timestamp')}: {new Date(file.timestamp).toLocaleString()}</span>
-                      <span>{t('fileSize')}: {(file.size / 1024).toFixed(2)} KB</span>
-                    </FileDetails>
-                  </FileInfo>
-                </FileItem>
-              ))}
-            </FileListContainer>
-
-            <FileSelectionFooter>
-              <SelectionControls>
-                <SelectionButton variant="secondary" onClick={handleSelectAll}>
-                  {t('selectAll')}
-                </SelectionButton>
-                <SelectionButton variant="secondary" onClick={handleDeselectAll}>
-                  {t('deselectAll')}
-                </SelectionButton>
-              </SelectionControls>
-              
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <span style={{ color: '#8b949e', fontSize: '12px' }}>
-                  {convertedFiles.filter(f => f.selected).length} / {Math.min(convertedFiles.length, 10)} {t('selectedFiles')}
-                </span>
-                <SelectionButton 
-                  onClick={handleProcessSelectedFiles}
-                  disabled={convertedFiles.filter(f => f.selected).length === 0 || convertedFiles.filter(f => f.selected).length > 10}
-                >
-                  <FiPlay />
-                  {t('processSelectedFiles')}
-                </SelectionButton>
-              </div>
-            </FileSelectionFooter>
-          </FileSelectionContent>
-        </FileSelectionModal>
-      )}
 
       {/* Settings Panel */}
       {showSettings && (
