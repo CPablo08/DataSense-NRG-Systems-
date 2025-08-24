@@ -10,7 +10,7 @@ import {
   FiThermometer, FiDroplet, FiWind, FiSun, FiBattery, FiAlertCircle, FiDatabase,
   FiTrendingUp, FiActivity, FiFolder, FiFile, FiClock, FiMonitor, FiCpu,
   FiPlayCircle, FiPauseCircle, FiRotateCcw, FiCheckCircle,
-  FiGlobe, FiLogIn, FiCalendar, FiDownload
+  FiGlobe, FiLogIn, FiCalendar, FiDownload, FiTrash2, FiSearch, FiX
 } from 'react-icons/fi';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
