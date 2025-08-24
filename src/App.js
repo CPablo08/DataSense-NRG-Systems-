@@ -442,23 +442,7 @@ const ControlButton = styled.button`
   }
 `;
 
-const StatusIndicator = styled.div`
-  background: ${props => {
-    switch (props.status) {
-      case 'processing': return '#f5a623';
-      case 'completed': return '#238636';
-      case 'error': return '#da3633';
-      default: return '#30363d';
-    }
-  }};
-  color: white;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 11px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-`;
+
 
 const SummaryCards = styled.div`
   display: grid;
