@@ -4,8 +4,12 @@ from sqlalchemy.orm import sessionmaker
 import os
 from datetime import datetime
 
-# Database URL from environment variable
+# Database URL from environment variable - use SQLite as fallback
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./nrg_config.db")
+
+# If using PostgreSQL from Render, convert the URL format
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # Create SQLAlchemy engine
 engine = create_engine(DATABASE_URL)
