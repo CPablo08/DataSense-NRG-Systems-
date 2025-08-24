@@ -6,11 +6,10 @@ import {
   AreaChart, Area, BarChart, Bar
 } from 'recharts';
 import { 
-  FiCloud, FiSettings, FiBarChart2, FiUpload, FiPlay, FiPause,
+  FiCloud, FiSettings, FiBarChart2, FiPlay,
   FiThermometer, FiDroplet, FiWind, FiSun, FiBattery, FiAlertCircle, FiDatabase,
-  FiTrendingUp, FiActivity, FiFolder, FiFile, FiClock, FiMonitor, FiCpu,
-  FiPlayCircle, FiPauseCircle, FiRotateCcw, FiCheckCircle,
-  FiGlobe, FiLogIn, FiCalendar, FiDownload, FiTrash2, FiSearch, FiX
+  FiTrendingUp, FiActivity, FiFolder, FiFile, FiClock, FiRotateCcw,
+  FiGlobe, FiDownload, FiTrash2, FiSearch, FiX
 } from 'react-icons/fi';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -40,17 +39,7 @@ const HeaderLeft = styled.div`
   gap: 10px;
 `;
 
-const CloudIcon = styled(FiCloud)`
-  font-size: 24px;
-  color: #1f6feb;
-`;
 
-const Title = styled.h1`
-  font-size: 18px;
-  font-weight: bold;
-  color: #fff;
-  margin: 0;
-`;
 
 const HeaderRight = styled.div`
   display: flex;
@@ -201,30 +190,7 @@ const UnitSelect = styled.select`
   }
 `;
 
-const ConfigInput = styled.input`
-  background: #0d1117;
-  border: 1px solid #30363d;
-  color: #fff;
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  width: 100%;
-  transition: all 0.2s ease;
 
-  &:hover {
-    border-color: #1f6feb;
-  }
-
-  &:focus {
-    outline: none;
-    border-color: #1f6feb;
-    box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.2);
-  }
-
-  &::placeholder {
-    color: #8b949e;
-  }
-`;
 
 const SettingsButton = styled.button`
   background: ${props => props.variant === 'secondary' ? '#30363d' : '#1f6feb'};
@@ -277,27 +243,7 @@ const ContentArea = styled.div`
   height: 100%;
 `;
 
-const SidebarSection = styled.div`
-  margin-bottom: 20px;
-`;
 
-const SectionTitle = styled.h3`
-  font-size: 14px;
-  font-weight: bold;
-  color: #1f6feb;
-  margin-bottom: 15px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const ControlCard = styled.div`
-  background: #21262d;
-  padding: 15px;
-  border-radius: 6px;
-  border: 1px solid #30363d;
-  margin-bottom: 15px;
-`;
 
 const CardTitle = styled.div`
   font-size: 12px;
@@ -309,48 +255,7 @@ const CardTitle = styled.div`
   gap: 6px;
 `;
 
-const Button = styled.button`
-  background: #1f6feb;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.3s ease;
 
-  &:hover {
-    background: #1158c7;
-  }
-
-  &:disabled {
-    background: #30363d;
-    color: #8b949e;
-    cursor: not-allowed;
-  }
-`;
-
-const FileCount = styled.div`
-  font-size: 11px;
-  color: #8b949e;
-  margin-top: 8px;
-`;
-
-const StatusItem = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  font-size: 11px;
-`;
-
-const StatusValue = styled.span`
-  color: ${props => props.color};
-  font-weight: bold;
-`;
 
 const StatusIndicator = styled.div`
   display: flex;
@@ -374,22 +279,7 @@ const StatusDot = styled.div`
   }
 `;
 
-const LogContainer = styled.div`
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 4px;
-  padding: 10px;
-  margin-top: 10px;
-  max-height: 150px;
-  overflow-y: auto;
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
-`;
 
-const LogEntry = styled.div`
-  color: ${props => props.type === 'error' ? '#f85149' : props.type === 'success' ? '#238636' : '#8b949e'};
-  margin-bottom: 2px;
-`;
 
 const DashboardView = styled(motion.div)`
   display: flex;
@@ -1413,18 +1303,15 @@ const translations = {
     realTimeVisualizationSubtitle: 'Visualización en tiempo real de datos de sensores RLD de las últimas 24 horas',
     pdfReport: 'Reporte PDF',
     generatePdfReport: 'Generar Reporte PDF',
-    windDirection: 'Dirección del Viento',
     readings: 'lecturas',
     first: 'Primero',
     last: 'Último',
     currentValues: 'Valores Actuales',
     files: 'archivos',
     active: 'Activo',
-    idle: 'Inactivo',
     noDataAvailable: 'No hay datos disponibles',
     processingStatus: 'Estado de Procesamiento',
     processingCompleted: 'Procesamiento Completado',
-    processingError: 'Error de Procesamiento',
     sensorDataAnalysis: 'Análisis de Datos de Sensores',
     sensorDataAnalysisContinued: 'Análisis de Datos de Sensores (Continuado)',
     environmentalDataAnalysis: 'Análisis de Datos Ambientales',
@@ -1433,7 +1320,6 @@ const translations = {
     sensorDataAnalysisReport: 'Reporte de Análisis de Datos de Sensores',
     generated: 'Generado',
     file: 'Archivo',
-    records: 'Registros',
     sensor: 'Sensor',
     average: 'Promedio',
     max: 'Máximo',
@@ -1471,9 +1357,7 @@ const translations = {
     activeSensors: 'Sensores Activos',
     dataPoints: 'Puntos de Datos',
     with: 'con',
-    totalRecords: 'Registros Totales',
-    fullScreenAnalysis: 'Análisis de Pantalla Completa',
-    closeAnalysisWindow: 'Cerrar Ventana de Análisis',
+
     // NRG API Configuration translations
 
     allFiles: 'Todos los Archivos',
@@ -1491,7 +1375,6 @@ const translations = {
 
     timestamp: 'Marca de Tiempo',
     fileName: 'Nombre del Archivo',
-    fileSize: 'Tamaño del Archivo',
     selectAll: 'Seleccionar Todos',
     deselectAll: 'Deseleccionar Todos',
 
@@ -1509,14 +1392,11 @@ const App = () => {
   const [language, setLanguage] = useState('en');
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [realTimeData, setRealTimeData] = useState([]);
-  const [processingLog, setProcessingLog] = useState([]);
   const [timeIndex, setTimeIndex] = useState(0);
   const [hasData, setHasData] = useState(false);
   const [libraryFiles, setLibraryFiles] = useState([]);
-  const [selectedLibraryFile, setSelectedLibraryFile] = useState(null);
   const [enlargedGraph, setEnlargedGraph] = useState(null);
   const [analysisTimeRange, setAnalysisTimeRange] = useState({ start: 0, end: 0 });
-  const [pdfReportTimeRange, setPdfReportTimeRange] = useState({ start: 0, end: 0 });
   const [settings, setSettings] = useState({
     dataExportFormat: 'csv',
     autoProcessRLD: true,
@@ -1541,12 +1421,9 @@ const App = () => {
   });
 
   const [showSettings, setShowSettings] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState('dark');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const [availableTags, setAvailableTags] = useState([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingStatus, setProcessingStatus] = useState('idle');
   const [backendStatus, setBackendStatus] = useState('connecting');
 
   // Email configuration state
@@ -1985,61 +1862,7 @@ const App = () => {
 
 
 
-  const handleFileSelect = async () => {
-    try {
-      addLogEntry('Opening file selection dialog...', 'info');
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.multiple = true;
-      input.accept = '.txt';
-      
-      input.onchange = async (e) => {
-        const files = Array.from(e.target.files);
-        setSelectedFiles(files);
-        addLogEntry(`Selected ${files.length} files for processing`, 'success');
-        console.log(`${t('fileUploadSuccess')}: ${files.length} files`);
-      };
-      
-      input.click();
-    } catch (error) {
-      addLogEntry(`Error selecting files: ${error.message}`, 'error');
-      console.error('Error selecting files:', error);
-    }
-  };
 
-  const handleProcessFiles = async () => {
-    if (selectedFiles.length === 0) {
-      addLogEntry('No files selected for processing', 'error');
-      return;
-    }
-
-    setIsProcessing(true);
-    setProcessingStatus('processing');
-    addLogEntry('Starting file processing...', 'info');
-    
-    try {
-      // Only process TXT files
-      const txtFiles = selectedFiles.filter(file => 
-        file.name.toLowerCase().endsWith('.txt')
-      );
-      
-      if (txtFiles.length > 0) {
-        addLogEntry(`Found ${txtFiles.length} TXT files, processing directly...`, 'info');
-        await handleTXTFileProcessing(txtFiles);
-      } else {
-        addLogEntry('No TXT files found for processing', 'error');
-      }
-      
-      setProcessingStatus('completed');
-      setIsProcessing(false);
-      addLogEntry('All files processed successfully!', 'success');
-    } catch (error) {
-      console.error('Error processing files:', error);
-      setProcessingStatus('error');
-      setIsProcessing(false);
-      addLogEntry(`Processing failed: ${error.message}`, 'error');
-    }
-  };
 
 
 
@@ -2208,102 +2031,7 @@ const App = () => {
     return fileData;
   };
 
-  const handleRLDFileProcessing = async (files) => {
-    addLogEntry(t('startingRealRldFileProcessing'), 'info');
-    
-    try {
-      let unifiedData = [];
-      
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        addLogEntry(`${t('processingRldFile')} ${i + 1}/${files.length}: ${file.name}`, 'info');
-        
-        // Read the actual file content
-        const fileContent = await file.text();
-        addLogEntry(`${t('fileSize')}: ${fileContent.length} ${t('characters')}`, 'info');
-        
-        // Parse file content
-        const lines = fileContent.split('\n').filter(line => line.trim());
-        addLogEntry(`${t('foundDataLines')} ${file.name}: ${lines.length}`, 'info');
-        
-        // Check if this is a SymphoniePRO TXT file
-        const isSymphoniePRO = file.name.toLowerCase().includes('.txt') && 
-          (fileContent.includes('SymphoniePRO') || fileContent.includes('NRG Systems'));
-        
-        if (isSymphoniePRO) {
-          addLogEntry('Detected SymphoniePRO TXT format - parsing meteorological data...', 'info');
-          const fileData = await parseSymphoniePROFile(fileContent, file.name);
-          unifiedData = [...unifiedData, ...fileData];
-        } else {
-          // Original RLD parsing logic
-          addLogEntry('Processing as RLD format...', 'info');
-          const sampleLines = lines.slice(0, 5);
-          addLogEntry(`${t('sampleLinesFrom')} ${file.name}:`, 'info');
-          sampleLines.forEach((line, index) => {
-            addLogEntry(`  ${t('line')} ${index + 1}: ${line.substring(0, 150)}...`, 'info');
-          });
-          
-          const fileData = [];
-          let validRecords = 0;
-          
-          for (let j = 0; j < lines.length; j++) {
-            const line = lines[j].trim();
-            if (!line || line.startsWith('#') || line.startsWith('//') || line.startsWith('Header')) continue;
-            
-            try {
-              // Debug: Log the first few lines to understand the format
-              if (j < 5) {
-                addLogEntry(`${t('line')} ${j + 1}: ${line.substring(0, 100)}...`, 'info');
-              }
-              
-              // Try different parsing approaches for RLD format
-              let parts = [];
-              
-              // First try: comma-separated
-              if (line.includes(',')) {
-                parts = line.split(',').map(part => part.trim());
-              }
-              // Second try: tab-separated
-              else if (line.includes('\t')) {
-                parts = line.split('\t').map(part => part.trim());
-              }
-              // Third try: space-separated (but be more careful)
-              else if (line.includes(' ')) {
-                // Split by multiple spaces to handle fixed-width format
-                parts = line.split(/\s+/).filter(part => part.trim());
-              }
-              // Fourth try: any whitespace
-              else {
-                parts = line.split(/\s+/).filter(part => part.trim());
-              }
-              
-              // Filter out empty parts and try to extract numeric values
-              parts = parts.filter(part => part.trim() !== '');
-              
-              addLogEntry(`${t('parsedPartsFromLine')} ${j + 1}: ${parts.length}`, 'info');
-              
-              // If we have data, try to extract values
-              if (parts.length >= 3) {
-                // Try to find numeric values in the parts
-                const numericParts = parts.map(part => {
-                  const num = parseFloat(part);
-                  return isNaN(num) ? 0 : num;
-                });
-                
-                // Use file creation time as base timestamp
-                const fileTime = new Date(file.lastModified);
-                const recordTime = new Date(fileTime.getTime() + (j * 60000));
-                
-                const dataPoint = {
-                  time: recordTime.toLocaleTimeString(),
-                  timestamp: recordTime.toISOString(),
-                  NRG_40C_Anem: numericParts[0] || 0,
-                  NRG_200M_Vane: numericParts[1] || 0,
-                  NRG_T60_Temp: numericParts[2] || 0,
-                  NRG_RH5X_Humi: numericParts[3] || 0,
-                  NRG_BP60_Baro: numericParts[4] || 0,
-                  Rain_Gauge: numericParts[5] || 0,
-                  NRG_PVT1_PV_Temp: numericParts[6] || 0,
+
                   PSM_c_Si_Isc_Soil: numericParts[7] || 0,
                   PSM_c_Si_Isc_Clean: numericParts[8] || 0,
                   Average_12V_Battery: numericParts[9] || 0
@@ -2456,8 +2184,7 @@ const App = () => {
     return realTimeData.slice(startIndex, endIndex + 1);
   };
 
-  const currentValues = getCurrentSensorValues();
-  const currentTimeData = realTimeData[timeIndex] || realTimeData[realTimeData.length - 1];
+
 
   // Create wind rose data for wind direction based on actual degrees with timestamps
   const createWindRoseData = () => {
@@ -2690,44 +2417,7 @@ const App = () => {
     addLogEntry('Closed enlarged graph', 'info');
   };
 
-  // Export data functionality
-  const exportData = () => {
-    if (realTimeData.length === 0) {
-      addLogEntry('No data to export', 'error');
-      return;
-    }
 
-    const dataToExport = realTimeData.map(point => ({
-      timestamp: point.timestamp,
-      time: point.time,
-      ...point
-    }));
-
-    let exportContent = '';
-    let filename = '';
-
-    if (settings.dataExportFormat === 'csv') {
-      const headers = Object.keys(dataToExport[0]).join(',');
-      const rows = dataToExport.map(row => Object.values(row).join(','));
-      exportContent = [headers, ...rows].join('\n');
-      filename = `datasense_data_${new Date().toISOString().split('T')[0]}.csv`;
-    } else if (settings.dataExportFormat === 'json') {
-      exportContent = JSON.stringify(dataToExport, null, 2);
-      filename = `datasense_data_${new Date().toISOString().split('T')[0]}.json`;
-    }
-
-    const blob = new Blob([exportContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-      addLogEntry(`Data exported as ${settings.dataExportFormat.toUpperCase()}`, 'success');
-};
 
 // PDF Report Generation
 const generatePDFReport = (data, timeRange, fileName) => {
