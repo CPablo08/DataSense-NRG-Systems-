@@ -2781,6 +2781,15 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 </div>
                 
                 <InteractiveControls>
+                  <NavButton>
+                    <StatusIndicator status={backendStatus}>
+                      <StatusDot status={backendStatus} />
+                      {backendStatus === 'connected' ? 'Connected' : 
+                       backendStatus === 'connecting' ? 'Connecting...' : 
+                       'Not Deployed'}
+                    </StatusIndicator>
+                  </NavButton>
+                  
                   <ControlButton 
                     onClick={() => {
                       if (realTimeData.length > 0) {
@@ -2797,13 +2806,6 @@ const generatePDFReport = (data, timeRange, fileName) => {
                     <FiDownload />
                     {t('pdfReport')}
                   </ControlButton>
-                  
-                  <StatusIndicator status={backendStatus}>
-                    <StatusDot status={backendStatus} />
-                    {backendStatus === 'connected' ? 'Connected' : 
-                     backendStatus === 'connecting' ? 'Connecting...' : 
-                     'Not Deployed'}
-                  </StatusIndicator>
 
                 </InteractiveControls>
               </DashboardHeader>
