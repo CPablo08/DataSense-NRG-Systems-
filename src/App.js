@@ -1253,16 +1253,7 @@ const App = () => {
     }
   }, []);
 
-  // Save email configuration to localStorage
-  const saveEmailConfig = (config) => {
-    try {
-      localStorage.setItem('datasenseEmailConfig', JSON.stringify(config));
-      setEmailConfig(config);
-      console.log('Email configuration saved');
-    } catch (error) {
-      console.error('Error saving email config:', error);
-    }
-  };
+
 
   // Start email monitoring
   const startEmailMonitoring = async () => {
