@@ -18,17 +18,4 @@ services:
       - key: MONITOR_INTERVAL
         value: 300
       - key: MAX_FILES_PER_BATCH
-        value: 10
-
-  # React Frontend (Static Site)
-  - type: static
-    name: nrg-datasense-frontend
-    env: static
-    plan: free
-    buildCommand: |
-      npm install
-      npm run build
-    staticPublishPath: ./build
-    envVars:
-      - key: REACT_APP_API_URL
-        value: https://nrg-datasense-backend.onrender.com 
+        value: 10 
