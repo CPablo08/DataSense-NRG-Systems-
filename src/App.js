@@ -356,8 +356,9 @@ const StatusIndicator = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   color: ${props => props.status === 'connected' ? '#1f6feb' : props.status === 'connecting' ? '#f59e0b' : '#dc2626'};
+  font-weight: 500;
 `;
 
 const StatusDot = styled.div`
@@ -1184,14 +1185,19 @@ const App = () => {
         }
       } catch (error) {
         console.error('Backend connection error:', error);
+        // If we can't connect, it might be because the backend isn't deployed yet
         setBackendStatus('error');
       }
     };
 
-    checkBackendStatus();
-    const interval = setInterval(checkBackendStatus, 30000); // Check every 30 seconds
-
-    return () => clearInterval(interval);
+    // Only check if we have an API URL configured
+    if (process.env.REACT_APP_API_URL) {
+      checkBackendStatus();
+      const interval = setInterval(checkBackendStatus, 30000); // Check every 30 seconds
+      return () => clearInterval(interval);
+    } else {
+      setBackendStatus('error');
+    }
   }, []);
 
   // Load library files from localStorage on app start and clean old data
@@ -2368,6 +2374,8 @@ const generatePDFReport = (data, timeRange, fileName) => {
           >
             <FiBarChart2 />
             {t('dashboard')}
+          </NavButton>
+          <NavButton>
             <StatusIndicator status={backendStatus}>
               <StatusDot status={backendStatus} />
               {backendStatus === 'connected' ? 'Connected' : backendStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
