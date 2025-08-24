@@ -20,21 +20,15 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uvicorn
 
-# Import NRG libraries (optional for deployment)
-nrgpy_available = False
-data_email_client_available = False
-
+# Import NRG libraries
 try:
     import nrgpy
-    nrgpy_available = True
-except ImportError:
-    print("Warning: nrgpy not available - RLD conversion will be disabled")
-
-try:
     from data_email_client import mailer
-    data_email_client_available = True
-except ImportError:
-    print("Warning: data_email_client not available - email monitoring will be disabled")
+    print("✅ NRG libraries imported successfully")
+except ImportError as e:
+    print(f"❌ Error importing NRG libraries: {e}")
+    print("Please ensure nrgpy and data_email_client are installed")
+    raise ImportError(f"Required NRG libraries not available: {e}")
 
 # Configure logging
 logging.basicConfig(
@@ -105,9 +99,6 @@ class EmailMonitor:
     
     def download_email_attachments(self) -> List[str]:
         """Download RLD attachments from emails"""
-        if not data_email_client_available:
-            logger.warning("data_email_client not available - email monitoring disabled")
-            return []
             
         try:
             email_config = self.config.email
@@ -150,9 +141,6 @@ class EmailMonitor:
     
     def convert_rld_to_txt(self, rld_files: List[str]) -> List[str]:
         """Convert RLD files to TXT using local nrgpy"""
-        if not nrgpy_available:
-            logger.warning("nrgpy not available - RLD conversion disabled")
-            return []
             
         converted_files = []
         
