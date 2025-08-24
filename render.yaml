@@ -3,7 +3,6 @@ services:
   - type: web
     name: nrg-datasense-backend
     env: python
-    plan: free
     buildCommand: cd backend && pip install -r requirements.txt
     startCommand: cd backend && python run.py
     envVars:
@@ -23,7 +22,6 @@ services:
   - type: web
     name: nrg-datasense-frontend
     env: static
-    plan: free
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
     envVars:
