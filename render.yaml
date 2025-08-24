@@ -1,5 +1,5 @@
 services:
-  # Unified FastAPI Backend with Email Monitoring
+  # FastAPI Backend Service
   - type: web
     name: nrg-datasense-backend
     env: python
@@ -18,4 +18,33 @@ services:
       - key: MONITOR_INTERVAL
         value: 300
       - key: MAX_FILES_PER_BATCH
-        value: 10 
+        value: 10
+      - key: CORS_ORIGINS
+        value: "https://nrg-datasense-frontend.onrender.com,http://localhost:3000"
+    healthCheckPath: /health
+    autoDeploy: true
+
+  # React Frontend Service
+  - type: web
+    name: nrg-datasense-frontend
+    env: static
+    plan: free
+    buildCommand: |
+      npm install
+      npm run build
+    staticPublishPath: ./build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: "https://nrg-datasense-backend.onrender.com"
+      - key: REACT_APP_ENVIRONMENT
+        value: "production"
+    autoDeploy: true
+
+  # Optional: PostgreSQL Database (if you need persistent storage later)
+  - type: pserv
+    name: nrg-datasense-db
+    env: postgresql
+    plan: free
+    maxConnections: 5
+    ipAllowList: []
+    autoDeploy: true 

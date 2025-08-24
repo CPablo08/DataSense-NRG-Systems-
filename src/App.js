@@ -1167,7 +1167,16 @@ const App = () => {
   const [processingStatus, setProcessingStatus] = useState('idle');
   const [backendStatus, setBackendStatus] = useState('connecting');
 
-  
+  // Email configuration state
+  const [emailConfig, setEmailConfig] = useState({
+    enabled: false,
+    smtpServer: '',
+    smtpPort: 587,
+    username: '',
+    password: '',
+    recipientEmail: '',
+    subject: 'NRG DataSense Report'
+  });
 
   
   // Settings save status

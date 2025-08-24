@@ -47,7 +47,11 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://nrg-datasense-frontend.onrender.com",
+        "https://nrg-datasense.onrender.com"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,6 +72,7 @@ class ProcessedData(BaseModel):
 data_storage_file = "data_storage.json"
 websocket_connections: List[WebSocket] = []
 processed_data: List[Dict] = []
+is_monitoring = False  # Flag to track monitoring status
 
 def setup_directories():
     """Create necessary directories"""
