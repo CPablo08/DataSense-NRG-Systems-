@@ -1180,7 +1180,7 @@ const App = () => {
         // Set connecting status while checking
         setBackendStatus('connecting');
         
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/health`, {
+        const response = await fetch(`https://nrg-datasense-backend.onrender.com/health`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -1213,25 +1213,19 @@ const App = () => {
       }
     };
 
-    // Auto-detect Render deployment and check connection
-    const apiUrl = process.env.REACT_APP_API_URL;
-    if (apiUrl) {
-      console.log('🔍 Checking backend connection at:', apiUrl);
-      checkBackendStatus();
-      
-      // Check more frequently initially, then every 30 seconds
-      const initialInterval = setInterval(checkBackendStatus, 5000); // Check every 5 seconds initially
-      setTimeout(() => {
-        clearInterval(initialInterval);
-        const regularInterval = setInterval(checkBackendStatus, 30000); // Then every 30 seconds
-        return () => clearInterval(regularInterval);
-      }, 60000); // After 1 minute, switch to regular interval
-      
-      return () => clearInterval(initialInterval);
-    } else {
-      console.log('⚠️ No API URL configured');
-      setBackendStatus('error');
-    }
+    // Use permanent backend URL
+    console.log('🔍 Checking backend connection at: https://nrg-datasense-backend.onrender.com');
+    checkBackendStatus();
+    
+    // Check more frequently initially, then every 30 seconds
+    const initialInterval = setInterval(checkBackendStatus, 5000); // Check every 5 seconds initially
+    setTimeout(() => {
+      clearInterval(initialInterval);
+      const regularInterval = setInterval(checkBackendStatus, 30000); // Then every 30 seconds
+      return () => clearInterval(regularInterval);
+    }, 60000); // After 1 minute, switch to regular interval
+    
+    return () => clearInterval(initialInterval);
   }, []);
 
   // Load library files from localStorage on app start and clean old data

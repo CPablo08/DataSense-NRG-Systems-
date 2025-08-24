@@ -1,6 +1,6 @@
 // API service for communicating with the NRG RLD Converter backend
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = 'https://nrg-datasense-backend.onrender.com';
 
 class ApiService {
   constructor() {
