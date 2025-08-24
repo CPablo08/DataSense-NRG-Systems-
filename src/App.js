@@ -1190,15 +1190,26 @@ const App = () => {
         });
         
         if (response.ok) {
+          const healthData = await response.json();
           setBackendStatus('connected');
-          console.log('✅ Backend connected successfully');
+          console.log('✅ Backend connected successfully:', healthData);
         } else {
           setBackendStatus('error');
           console.log('❌ Backend health check failed:', response.status);
         }
       } catch (error) {
         console.error('Backend connection error:', error);
-        setBackendStatus('error');
+        
+        // More specific error handling
+        if (error.name === 'AbortError') {
+          console.log('⏰ Backend connection timeout - service may be starting up');
+          setBackendStatus('connecting'); // Keep trying if it's a timeout
+        } else if (error.message.includes('Failed to fetch')) {
+          console.log('🌐 Backend not reachable - may not be deployed yet');
+          setBackendStatus('error');
+        } else {
+          setBackendStatus('error');
+        }
       }
     };
 
@@ -2393,7 +2404,9 @@ const generatePDFReport = (data, timeRange, fileName) => {
           <NavButton>
             <StatusIndicator status={backendStatus}>
               <StatusDot status={backendStatus} />
-              {backendStatus === 'connected' ? 'Connected' : backendStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+              {backendStatus === 'connected' ? 'Connected' : 
+               backendStatus === 'connecting' ? 'Connecting...' : 
+               'Not Deployed'}
             </StatusIndicator>
           </NavButton>
           <NavButton 
