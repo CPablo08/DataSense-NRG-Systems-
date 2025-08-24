@@ -6,8 +6,7 @@ services:
     plan: free
     buildCommand: |
       cd backend
-      chmod +x build.sh
-      ./build.sh
+      pip install -r requirements.txt
     startCommand: |
       cd backend
       python run.py
