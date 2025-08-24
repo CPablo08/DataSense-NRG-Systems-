@@ -268,22 +268,13 @@ const Overlay = styled.div`
 `;
 
 const MainContent = styled.div`
-  display: flex;
   height: calc(100vh - 80px);
 `;
 
-const Sidebar = styled.div`
-  width: 300px;
-  background: #161b22;
-  border-right: 1px solid #30363d;
-  padding: 20px;
-  overflow-y: auto;
-`;
-
 const ContentArea = styled.div`
-  flex: 1;
   padding: 20px;
   overflow-y: auto;
+  height: 100%;
 `;
 
 const SidebarSection = styled.div`
@@ -359,6 +350,27 @@ const StatusItem = styled.div`
 const StatusValue = styled.span`
   color: ${props => props.color};
   font-weight: bold;
+`;
+
+const StatusIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: ${props => props.status === 'connected' ? '#1f6feb' : props.status === 'connecting' ? '#f59e0b' : '#dc2626'};
+`;
+
+const StatusDot = styled.div`
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: ${props => props.status === 'connected' ? '#1f6feb' : props.status === 'connecting' ? '#f59e0b' : '#dc2626'};
+  animation: ${props => props.status === 'connecting' ? 'pulse 2s infinite' : 'none'};
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
 `;
 
 const LogContainer = styled.div`
@@ -1168,12 +1180,35 @@ const App = () => {
   const [availableTags, setAvailableTags] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('idle');
+  const [backendStatus, setBackendStatus] = useState('connecting');
   
 
   
   // Settings save status
   const [settingsSaveStatus, setSettingsSaveStatus] = useState({ type: '', message: '' });
 
+
+  // Check backend status
+  useEffect(() => {
+    const checkBackendStatus = async () => {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/health`);
+        if (response.ok) {
+          setBackendStatus('connected');
+        } else {
+          setBackendStatus('error');
+        }
+      } catch (error) {
+        console.error('Backend connection error:', error);
+        setBackendStatus('error');
+      }
+    };
+
+    checkBackendStatus();
+    const interval = setInterval(checkBackendStatus, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Load library files from localStorage on app start and clean old data
   useEffect(() => {
@@ -2349,6 +2384,10 @@ const generatePDFReport = (data, timeRange, fileName) => {
           >
             <FiBarChart2 />
             {t('dashboard')}
+            <StatusIndicator status={backendStatus}>
+              <StatusDot status={backendStatus} />
+              {backendStatus === 'connected' ? 'Connected' : backendStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+            </StatusIndicator>
           </NavButton>
           <NavButton 
             onClick={() => setShowSettings(true)}
@@ -2364,51 +2403,6 @@ const generatePDFReport = (data, timeRange, fileName) => {
       </Header>
 
       <MainContent>
-        <Sidebar>
-          <SidebarSection>
-            <SectionTitle>
-              <FiFolder />
-              {t('folderSelection')}
-            </SectionTitle>
-            
-
-
-            <ControlCard>
-              <CardTitle>
-                <FiMonitor />
-                {t('systemStatus')}
-              </CardTitle>
-
-              <StatusItem>
-                <span>{t('activeSensors')}</span>
-                <StatusValue color="#1f6feb">10</StatusValue>
-              </StatusItem>
-              <StatusItem>
-                <span>{t('dataPoints')}</span>
-                <StatusValue color="#1f6feb">1,247</StatusValue>
-              </StatusItem>
-              <StatusItem>
-                <span>{t('lastUpdate')}</span>
-                <StatusValue color="#1f6feb">2 min ago</StatusValue>
-              </StatusItem>
-            </ControlCard>
-
-            <ControlCard>
-              <CardTitle>
-                <FiLogIn />
-                {t('processingLog')}
-              </CardTitle>
-              <LogContainer>
-                {processingLog.slice(-10).map((log, index) => (
-                  <LogEntry key={index} type={log.type}>
-                    [{log.timestamp}] {log.message}
-                  </LogEntry>
-                ))}
-              </LogContainer>
-            </ControlCard>
-          </SidebarSection>
-        </Sidebar>
-
         <ContentArea>
           {currentView === 'dashboard' && (
             <DashboardView>
