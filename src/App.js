@@ -981,6 +981,111 @@ const EmptyState = styled.div`
   }
 `;
 
+// Statistics Panel Styled Components
+const StatisticsContainer = styled.div`
+  padding: 20px;
+  height: 200px;
+  overflow-y: auto;
+`;
+
+const StatisticsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+`;
+
+const StatItem = styled.div`
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 15px;
+  transition: all 0.2s;
+  
+  &:hover {
+    border-color: #1f6feb;
+    box-shadow: 0 2px 8px rgba(31, 111, 235, 0.1);
+  }
+`;
+
+const StatHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+`;
+
+const StatName = styled.div`
+  font-weight: 600;
+  color: #ffffff;
+  font-size: 14px;
+`;
+
+const StatUnit = styled.div`
+  color: #8b949e;
+  font-size: 12px;
+  background: #21262d;
+  padding: 2px 6px;
+  border-radius: 4px;
+`;
+
+const StatValues = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 8px;
+`;
+
+const StatValue = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const StatLabel = styled.span`
+  color: #8b949e;
+  font-size: 12px;
+`;
+
+const StatNumber = styled.span`
+  color: #1f6feb;
+  font-weight: 600;
+  font-size: 12px;
+`;
+
+const StatReadings = styled.div`
+  color: #8b949e;
+  font-size: 11px;
+  text-align: right;
+  border-top: 1px solid #30363d;
+  padding-top: 5px;
+`;
+
+const NoDataMessage = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #8b949e;
+  
+  svg {
+    font-size: 32px;
+    margin-bottom: 15px;
+    color: #30363d;
+  }
+  
+  h3 {
+    margin-bottom: 8px;
+    color: #ffffff;
+    font-size: 16px;
+  }
+  
+  p {
+    font-size: 14px;
+    text-align: center;
+  }
+`;
+
 // Translations
 const translations = {
   en: {
@@ -2529,6 +2634,66 @@ const App = () => {
     };
   };
 
+  // Get sensor display name
+  const getSensorDisplayName = (sensorKey) => {
+    const sensorNames = {
+      'NRG_40C_Anem': 'Wind Speed',
+      'NRG_200M_Vane': 'Wind Direction',
+      'NRG_T60_Temp': 'Temperature',
+      'NRG_RH5X_Humi': 'Humidity',
+      'NRG_BP60_Baro': 'Pressure',
+      'Rain_Gauge': 'Rainfall',
+      'PSM_c_Si_Isc_Soil': 'Solar Current (Soil)',
+      'PSM_c_Si_Isc_Clean': 'Solar Current (Clean)',
+      'Average_12V_Battery': 'Battery Voltage'
+    };
+    return sensorNames[sensorKey] || sensorKey;
+  };
+
+  // Calculate sensor statistics
+  const getSensorStats = () => {
+    if (!realTimeData || realTimeData.length === 0) {
+      return null;
+    }
+
+    const sensors = [
+      'NRG_40C_Anem', 'NRG_200M_Vane', 'NRG_T60_Temp', 'NRG_RH5X_Humi',
+      'NRG_BP60_Baro', 'Rain_Gauge', 'PSM_c_Si_Isc_Soil', 'PSM_c_Si_Isc_Clean', 'Average_12V_Battery'
+    ];
+
+    const stats = {};
+    
+    sensors.forEach(sensor => {
+      const values = realTimeData
+        .map(point => point[sensor])
+        .filter(val => val !== undefined && val !== null && !isNaN(val));
+      
+      if (values.length > 0) {
+        const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        
+        stats[sensor] = {
+          average: avg.toFixed(2),
+          minimum: min.toFixed(2),
+          maximum: max.toFixed(2),
+          unit: sensorUnits[sensor] || 'N/A',
+          readings: values.length
+        };
+      } else {
+        stats[sensor] = {
+          average: 'N/A',
+          minimum: 'N/A',
+          maximum: 'N/A',
+          unit: sensorUnits[sensor] || 'N/A',
+          readings: 0
+        };
+      }
+    });
+
+    return stats;
+  };
+
   // Graph enlargement functions
   const handleGraphDoubleClick = (graphType) => {
     setEnlargedGraph(graphType);
@@ -3075,6 +3240,50 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   </ScrollableChartContainer>
                 </GraphCard>
 
+                {/* Sensor Statistics Panel */}
+                <GraphCard onDoubleClick={() => handleGraphDoubleClick('statistics')} style={{ cursor: 'pointer' }}>
+                  <GraphTitle>
+                    <FiTrendingUp />
+                    Sensor Statistics
+                  </GraphTitle>
+                  <ScrollableChartContainer>
+                    <StatisticsContainer>
+                      {getSensorStats() ? (
+                        <StatisticsGrid>
+                          {Object.entries(getSensorStats()).map(([sensor, data]) => (
+                            <StatItem key={sensor}>
+                              <StatHeader>
+                                <StatName>{getSensorDisplayName(sensor)}</StatName>
+                                <StatUnit>{data.unit}</StatUnit>
+                              </StatHeader>
+                              <StatValues>
+                                <StatValue>
+                                  <StatLabel>Avg:</StatLabel>
+                                  <StatNumber>{data.average}</StatNumber>
+                                </StatValue>
+                                <StatValue>
+                                  <StatLabel>Min:</StatLabel>
+                                  <StatNumber>{data.minimum}</StatNumber>
+                                </StatValue>
+                                <StatValue>
+                                  <StatLabel>Max:</StatLabel>
+                                  <StatNumber>{data.maximum}</StatNumber>
+                                </StatValue>
+                              </StatValues>
+                              <StatReadings>{data.readings} readings</StatReadings>
+                            </StatItem>
+                          ))}
+                        </StatisticsGrid>
+                      ) : (
+                        <NoDataMessage>
+                          <FiAlertCircle />
+                          <h3>No Data Available</h3>
+                          <p>Upload and process RLD files to see sensor statistics</p>
+                        </NoDataMessage>
+                      )}
+                    </StatisticsContainer>
+                  </ScrollableChartContainer>
+                </GraphCard>
 
               </GraphsContainer>
 
@@ -3383,6 +3592,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 {enlargedGraph === 'rainfall' && `${t('rainfallChart')} - ${t('fullScreenAnalysis')}`}
                 {enlargedGraph === 'solar' && `${t('solarChart')} - ${t('fullScreenAnalysis')}`}
                 {enlargedGraph === 'battery' && `${t('batteryChart')} - ${t('fullScreenAnalysis')}`}
+                {enlargedGraph === 'statistics' && `Sensor Statistics - ${t('fullScreenAnalysis')}`}
               </h2>
               <CloseButton onClick={closeEnlargedGraph} style={{ fontSize: '16px', padding: '10px 20px' }}>
                 {t('closeAnalysisWindow')}
@@ -3530,6 +3740,87 @@ const generatePDFReport = (data, timeRange, fileName) => {
                     <Line type="monotone" dataKey="Average_12V_Battery" stroke="#27ae60" strokeWidth={3} />
                   </LineChart>
                 </ResponsiveContainer>
+              )}
+
+              {enlargedGraph === 'statistics' && (
+                <div style={{ height: '100%', overflow: 'auto' }}>
+                  {getSensorStats() ? (
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                      gap: '20px',
+                      padding: '20px'
+                    }}>
+                      {Object.entries(getSensorStats()).map(([sensor, data]) => (
+                        <div key={sensor} style={{
+                          background: '#21262d',
+                          border: '1px solid #30363d',
+                          borderRadius: '12px',
+                          padding: '20px',
+                          transition: 'all 0.2s'
+                        }}>
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '15px'
+                          }}>
+                            <h3 style={{ color: '#ffffff', margin: 0, fontSize: '18px' }}>
+                              {getSensorDisplayName(sensor)}
+                            </h3>
+                            <span style={{
+                              color: '#8b949e',
+                              fontSize: '14px',
+                              background: '#161b22',
+                              padding: '4px 8px',
+                              borderRadius: '6px'
+                            }}>
+                              {data.unit}
+                            </span>
+                          </div>
+                          
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ color: '#8b949e', fontSize: '12px', marginBottom: '5px' }}>Average</div>
+                              <div style={{ color: '#1f6feb', fontSize: '20px', fontWeight: '600' }}>{data.average}</div>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ color: '#8b949e', fontSize: '12px', marginBottom: '5px' }}>Minimum</div>
+                              <div style={{ color: '#e74c3c', fontSize: '20px', fontWeight: '600' }}>{data.minimum}</div>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ color: '#8b949e', fontSize: '12px', marginBottom: '5px' }}>Maximum</div>
+                              <div style={{ color: '#27ae60', fontSize: '20px', fontWeight: '600' }}>{data.maximum}</div>
+                            </div>
+                          </div>
+                          
+                          <div style={{
+                            color: '#8b949e',
+                            fontSize: '14px',
+                            textAlign: 'center',
+                            borderTop: '1px solid #30363d',
+                            paddingTop: '10px'
+                          }}>
+                            {data.readings} readings analyzed
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '100%',
+                      color: '#8b949e'
+                    }}>
+                      <FiAlertCircle style={{ fontSize: '48px', marginBottom: '20px', color: '#30363d' }} />
+                      <h3 style={{ marginBottom: '10px', color: '#ffffff', fontSize: '20px' }}>No Data Available</h3>
+                      <p style={{ fontSize: '16px', textAlign: 'center' }}>Upload and process RLD files to see sensor statistics</p>
+                    </div>
+                  )}
+                </div>
               )}
               </div>
             </div>
