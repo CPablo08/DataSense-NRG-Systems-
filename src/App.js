@@ -2634,22 +2634,6 @@ const App = () => {
     };
   };
 
-  // Get sensor display name
-  const getSensorDisplayName = (sensorKey) => {
-    const sensorNames = {
-      'NRG_40C_Anem': 'Wind Speed',
-      'NRG_200M_Vane': 'Wind Direction',
-      'NRG_T60_Temp': 'Temperature',
-      'NRG_RH5X_Humi': 'Humidity',
-      'NRG_BP60_Baro': 'Pressure',
-      'Rain_Gauge': 'Rainfall',
-      'PSM_c_Si_Isc_Soil': 'Solar Current (Soil)',
-      'PSM_c_Si_Isc_Clean': 'Solar Current (Clean)',
-      'Average_12V_Battery': 'Battery Voltage'
-    };
-    return sensorNames[sensorKey] || sensorKey;
-  };
-
   // Calculate sensor statistics
   const getSensorStats = () => {
     if (!realTimeData || realTimeData.length === 0) {
