@@ -1255,50 +1255,7 @@ const App = () => {
 
 
 
-  // Start email monitoring
-  const startEmailMonitoring = async () => {
-    try {
-      const response = await fetch('https://nrg-datasense-backend.onrender.com/api/monitoring/start', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(emailConfig)
-      });
 
-      if (response.ok) {
-        setIsMonitoring(true);
-        setMonitoringStatus('running');
-        console.log('Email monitoring started');
-      } else {
-        console.error('Failed to start monitoring');
-      }
-    } catch (error) {
-      console.error('Error starting monitoring:', error);
-    }
-  };
-
-  // Stop email monitoring
-  const stopEmailMonitoring = async () => {
-    try {
-      const response = await fetch('https://nrg-datasense-backend.onrender.com/api/monitoring/stop', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (response.ok) {
-        setIsMonitoring(false);
-        setMonitoringStatus('stopped');
-        console.log('Email monitoring stopped');
-      } else {
-        console.error('Failed to stop monitoring');
-      }
-    } catch (error) {
-      console.error('Error stopping monitoring:', error);
-    }
-  };
 
   // Email configuration functions
   const loadEmailConfig = async () => {
