@@ -10,7 +10,7 @@ import {
   FiThermometer, FiDroplet, FiWind, FiSun, FiBattery, FiAlertCircle, FiDatabase,
   FiTrendingUp, FiActivity, FiFolder, FiFile, FiClock, FiMonitor, FiCpu,
   FiPlayCircle, FiPauseCircle, FiRotateCcw, FiCheckCircle,
-  FiGlobe, FiLogIn, FiCalendar, FiDownload
+  FiGlobe, FiLogIn, FiCalendar, FiDownload, FiMail
 } from 'react-icons/fi';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -1166,6 +1166,18 @@ const App = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('idle');
   const [backendStatus, setBackendStatus] = useState('connecting');
+  const [emailConfig, setEmailConfig] = useState({
+    server: '',
+    username: '',
+    password: '',
+    search_text: 'SymphoniePRO Logger data attached.',
+    mail_folder: 'INBOX',
+    file_extension: '.rld',
+    delete_emails: false
+  });
+  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [monitoringStatus, setMonitoringStatus] = useState('stopped');
+  const [showEmailConfig, setShowEmailConfig] = useState(false);
   
 
   
@@ -1226,6 +1238,166 @@ const App = () => {
     }, 60000); // After 1 minute, switch to regular interval
     
     return () => clearInterval(initialInterval);
+  }, []);
+
+  // Load email configuration from localStorage
+  useEffect(() => {
+    const savedEmailConfig = localStorage.getItem('datasenseEmailConfig');
+    if (savedEmailConfig) {
+      try {
+        const config = JSON.parse(savedEmailConfig);
+        setEmailConfig(config);
+      } catch (error) {
+        console.error('Error loading email config:', error);
+      }
+    }
+  }, []);
+
+  // Save email configuration to localStorage
+  const saveEmailConfig = (config) => {
+    try {
+      localStorage.setItem('datasenseEmailConfig', JSON.stringify(config));
+      setEmailConfig(config);
+      console.log('Email configuration saved');
+    } catch (error) {
+      console.error('Error saving email config:', error);
+    }
+  };
+
+  // Start email monitoring
+  const startEmailMonitoring = async () => {
+    try {
+      const response = await fetch('https://nrg-datasense-backend.onrender.com/api/monitoring/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(emailConfig)
+      });
+
+      if (response.ok) {
+        setIsMonitoring(true);
+        setMonitoringStatus('running');
+        console.log('Email monitoring started');
+      } else {
+        console.error('Failed to start monitoring');
+      }
+    } catch (error) {
+      console.error('Error starting monitoring:', error);
+    }
+  };
+
+  // Stop email monitoring
+  const stopEmailMonitoring = async () => {
+    try {
+      const response = await fetch('https://nrg-datasense-backend.onrender.com/api/monitoring/stop', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        setIsMonitoring(false);
+        setMonitoringStatus('stopped');
+        console.log('Email monitoring stopped');
+      } else {
+        console.error('Failed to stop monitoring');
+      }
+    } catch (error) {
+      console.error('Error stopping monitoring:', error);
+    }
+  };
+
+  // Email configuration functions
+  const loadEmailConfig = async () => {
+    try {
+      const response = await fetch('https://nrg-datasense-backend.onrender.com/api/config');
+      if (response.ok) {
+        const config = await response.json();
+        setEmailConfig(config.email || {
+          server: '',
+          username: '',
+          password: '',
+          search_text: 'SymphoniePRO Logger data attached.',
+          mail_folder: 'INBOX',
+          file_extension: '.rld',
+          delete_emails: false
+        });
+      }
+    } catch (error) {
+      console.log('No saved email config found, using defaults');
+    }
+  };
+
+  const saveEmailConfig = async (config) => {
+    try {
+      const response = await fetch('https://nrg-datasense-backend.onrender.com/api/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: config,
+          nrg: {
+            output_folder: './converted',
+            file_filter: '000110'
+          },
+          monitor_interval: 300,
+          max_files_per_batch: 10
+        })
+      });
+      
+      if (response.ok) {
+        console.log('✅ Email configuration saved successfully');
+        setEmailConfig(config);
+      } else {
+        console.error('❌ Failed to save email configuration');
+      }
+    } catch (error) {
+      console.error('Error saving email config:', error);
+    }
+  };
+
+  const startEmailMonitoring = async () => {
+    try {
+      const response = await fetch('https://nrg-datasense-backend.onrender.com/api/monitoring/start', {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        setIsMonitoring(true);
+        setMonitoringStatus('running');
+        console.log('✅ Email monitoring started');
+      } else {
+        console.error('❌ Failed to start email monitoring');
+      }
+    } catch (error) {
+      console.error('Error starting monitoring:', error);
+    }
+  };
+
+  const stopEmailMonitoring = async () => {
+    try {
+      const response = await fetch('https://nrg-datasense-backend.onrender.com/api/monitoring/stop', {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        setIsMonitoring(false);
+        setMonitoringStatus('stopped');
+        console.log('✅ Email monitoring stopped');
+      } else {
+        console.error('❌ Failed to stop email monitoring');
+      }
+    } catch (error) {
+      console.error('Error stopping monitoring:', error);
+    }
+  };
+
+  // Load email config on component mount
+  useEffect(() => {
+    loadEmailConfig();
   }, []);
 
   // Load library files from localStorage on app start and clean old data
@@ -2722,6 +2894,82 @@ const generatePDFReport = (data, timeRange, fileName) => {
                     </ChartWrapper>
                   </ScrollableChartContainer>
                 </GraphCard>
+
+                {/* Email Configuration Panel */}
+                <GraphCard onDoubleClick={() => setShowEmailConfig(true)} style={{ cursor: 'pointer' }}>
+                  <GraphTitle>
+                    <FiMail />
+                    Email Configuration
+                  </GraphTitle>
+                  <div style={{ padding: '15px', height: '200px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <span style={{ color: '#8b949e', fontSize: '12px' }}>Status:</span>
+                        <span style={{ 
+                          color: monitoringStatus === 'running' ? '#1f6feb' : '#8b949e', 
+                          fontSize: '12px',
+                          fontWeight: 'bold'
+                        }}>
+                          {monitoringStatus === 'running' ? '🟢 Monitoring Active' : '🔴 Monitoring Stopped'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <span style={{ color: '#8b949e', fontSize: '12px' }}>Server:</span>
+                        <span style={{ color: '#fff', fontSize: '12px' }}>
+                          {emailConfig.server ? emailConfig.server : 'Not configured'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <span style={{ color: '#8b949e', fontSize: '12px' }}>Username:</span>
+                        <span style={{ color: '#fff', fontSize: '12px' }}>
+                          {emailConfig.username ? emailConfig.username : 'Not configured'}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isMonitoring) {
+                            stopEmailMonitoring();
+                          } else {
+                            startEmailMonitoring();
+                          }
+                        }}
+                        style={{
+                          background: isMonitoring ? '#dc2626' : '#1f6feb',
+                          color: 'white',
+                          border: 'none',
+                          padding: '8px 12px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          flex: 1
+                        }}
+                      >
+                        {isMonitoring ? 'Stop Monitoring' : 'Start Monitoring'}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowEmailConfig(true);
+                        }}
+                        style={{
+                          background: '#21262d',
+                          color: 'white',
+                          border: '1px solid #30363d',
+                          padding: '8px 12px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          flex: 1
+                        }}
+                      >
+                        Configure
+                      </button>
+                    </div>
+                  </div>
+                </GraphCard>
               </GraphsContainer>
 
 
@@ -3034,6 +3282,203 @@ const generatePDFReport = (data, timeRange, fileName) => {
       )}
 
 
+
+      {/* Email Configuration Modal */}
+      {showEmailConfig && (
+        <>
+          <Overlay onClick={() => setShowEmailConfig(false)} />
+          <SettingsPanel
+            initial={{ x: 400 }}
+            animate={{ x: 0 }}
+            exit={{ x: 400 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          >
+            <SettingsHeader>
+              <SettingsTitle>
+                <FiMail />
+                Email Configuration
+              </SettingsTitle>
+              <SettingsCloseButton onClick={() => setShowEmailConfig(false)}>
+                ×
+              </SettingsCloseButton>
+            </SettingsHeader>
+
+            <SettingsSection>
+              <SettingsSectionTitle>
+                <FiMail />
+                Email Server Settings
+              </SettingsSectionTitle>
+              
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', color: '#fff', fontSize: '12px', marginBottom: '5px' }}>
+                  Email Server (IMAP/POP3)
+                </label>
+                <input
+                  type="text"
+                  value={emailConfig.server}
+                  onChange={(e) => setEmailConfig({...emailConfig, server: e.target.value})}
+                  placeholder="e.g., outlook.office365.com"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    background: '#0d1117',
+                    border: '1px solid #30363d',
+                    borderRadius: '4px',
+                    color: '#fff',
+                    fontSize: '12px'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', color: '#fff', fontSize: '12px', marginBottom: '5px' }}>
+                  Username/Email
+                </label>
+                <input
+                  type="text"
+                  value={emailConfig.username}
+                  onChange={(e) => setEmailConfig({...emailConfig, username: e.target.value})}
+                  placeholder="your-email@domain.com"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    background: '#0d1117',
+                    border: '1px solid #30363d',
+                    borderRadius: '4px',
+                    color: '#fff',
+                    fontSize: '12px'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', color: '#fff', fontSize: '12px', marginBottom: '5px' }}>
+                  Password/App Password
+                </label>
+                <input
+                  type="password"
+                  value={emailConfig.password}
+                  onChange={(e) => setEmailConfig({...emailConfig, password: e.target.value})}
+                  placeholder="Enter your password"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    background: '#0d1117',
+                    border: '1px solid #30363d',
+                    borderRadius: '4px',
+                    color: '#fff',
+                    fontSize: '12px'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', color: '#fff', fontSize: '12px', marginBottom: '5px' }}>
+                  Search Text
+                </label>
+                <input
+                  type="text"
+                  value={emailConfig.search_text}
+                  onChange={(e) => setEmailConfig({...emailConfig, search_text: e.target.value})}
+                  placeholder="SymphoniePRO Logger data attached."
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    background: '#0d1117',
+                    border: '1px solid #30363d',
+                    borderRadius: '4px',
+                    color: '#fff',
+                    fontSize: '12px'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', color: '#fff', fontSize: '12px', marginBottom: '5px' }}>
+                  Mail Folder
+                </label>
+                <input
+                  type="text"
+                  value={emailConfig.mail_folder}
+                  onChange={(e) => setEmailConfig({...emailConfig, mail_folder: e.target.value})}
+                  placeholder="INBOX"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    background: '#0d1117',
+                    border: '1px solid #30363d',
+                    borderRadius: '4px',
+                    color: '#fff',
+                    fontSize: '12px'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', color: '#fff', fontSize: '12px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={emailConfig.delete_emails}
+                    onChange={(e) => setEmailConfig({...emailConfig, delete_emails: e.target.checked})}
+                    style={{ marginRight: '8px' }}
+                  />
+                  Delete emails after processing
+                </label>
+              </div>
+            </SettingsSection>
+
+            <SettingsSection>
+              <SettingsSectionTitle>
+                <FiMonitor />
+                Monitoring Status
+              </SettingsSectionTitle>
+              
+              <div style={{ 
+                padding: '10px', 
+                background: monitoringStatus === 'running' ? '#1f6feb20' : '#dc262620', 
+                border: `1px solid ${monitoringStatus === 'running' ? '#1f6feb' : '#dc2626'}`, 
+                borderRadius: '4px',
+                marginBottom: '15px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ 
+                    color: monitoringStatus === 'running' ? '#1f6feb' : '#dc2626',
+                    fontSize: '14px'
+                  }}>
+                    {monitoringStatus === 'running' ? '🟢' : '🔴'}
+                  </span>
+                  <span style={{ color: '#fff', fontSize: '12px' }}>
+                    {monitoringStatus === 'running' ? 'Email monitoring is active' : 'Email monitoring is stopped'}
+                  </span>
+                </div>
+              </div>
+            </SettingsSection>
+            
+            <ButtonGroup>
+              <SettingsButton onClick={() => saveEmailConfig(emailConfig)}>
+                <FiDownload />
+                Save Configuration
+              </SettingsButton>
+              <SettingsButton 
+                variant="secondary" 
+                onClick={() => {
+                  if (isMonitoring) {
+                    stopEmailMonitoring();
+                  } else {
+                    startEmailMonitoring();
+                  }
+                }}
+              >
+                {isMonitoring ? <FiPause /> : <FiPlay />}
+                {isMonitoring ? 'Stop Monitoring' : 'Start Monitoring'}
+              </SettingsButton>
+              <SettingsButton variant="secondary" onClick={() => setShowEmailConfig(false)}>
+                Close
+              </SettingsButton>
+            </ButtonGroup>
+          </SettingsPanel>
+        </>
+      )}
 
       {/* Settings Panel */}
       {showSettings && (
