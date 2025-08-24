@@ -4,8 +4,6 @@ services:
     name: nrg-datasense-db
     env: postgresql
     plan: free
-    ipAllowList: []
-    maxConnections: 5
 
   # FastAPI Backend Service
   - type: web
