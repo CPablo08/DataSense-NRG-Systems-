@@ -2387,16 +2387,15 @@ const generatePDFReport = (data, timeRange, fileName) => {
               DataSense
             </span>
           </div>
+        </HeaderLeft>
+        <HeaderRight>
+          
           <NavButton>
             <StatusIndicator status={backendStatus}>
               <StatusDot status={backendStatus} />
               {backendStatus === 'connected' ? 'Connected' : backendStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
             </StatusIndicator>
           </NavButton>
-        </HeaderLeft>
-        <HeaderRight>
-          
-          
           <NavButton 
             active={currentView === 'dashboard'}
             onClick={() => setCurrentView('dashboard')}
