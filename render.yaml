@@ -45,6 +45,5 @@ services:
     name: nrg-datasense-db
     env: postgresql
     plan: free
-    maxConnections: 5
     ipAllowList: []
     autoDeploy: true 
