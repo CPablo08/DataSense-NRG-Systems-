@@ -1,5 +1,0 @@
-nrgpy==0.7.0
-data_email_client
-requests==2.31.0
-pandas==2.3.2
-numpy==2.3.2

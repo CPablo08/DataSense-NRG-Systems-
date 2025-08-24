@@ -1,5 +1,5 @@
 services:
-  # FastAPI Backend Service
+  # Unified FastAPI Backend with Email Monitoring
   - type: web
     name: nrg-datasense-backend
     env: python
@@ -15,8 +15,12 @@ services:
         value: 3.12.0
       - key: PORT
         value: 5000
+      - key: MONITOR_INTERVAL
+        value: 300
+      - key: MAX_FILES_PER_BATCH
+        value: 10
 
-  # React Frontend Service
+  # React Frontend
   - type: web
     name: nrg-datasense-frontend
     env: static
