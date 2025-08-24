@@ -40,9 +40,5 @@ services:
         value: "production"
     autoDeploy: true
 
-  # Optional: PostgreSQL Database (if you need persistent storage later)
-  - type: pserv
-    name: nrg-datasense-db
-    env: postgresql
-    plan: free
-    autoDeploy: true 
+  # Note: Using file-based storage for simplicity and cost-effectiveness
+  # PostgreSQL can be added later if needed for larger datasets 
