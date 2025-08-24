@@ -798,7 +798,7 @@ const LibraryStats = styled.div`
   margin-bottom: 30px;
 `;
 
-const StatCard = styled.div`
+const LibraryStatCard = styled.div`
   padding: 20px;
   background: ${props => props.theme === 'light' ? '#ffffff' : '#161b22'};
   border: 1px solid ${props => props.theme === 'light' ? '#e1e4e8' : '#30363d'};
@@ -806,14 +806,14 @@ const StatCard = styled.div`
   text-align: center;
 `;
 
-const StatValue = styled.div`
+const LibraryStatValue = styled.div`
   font-size: 24px;
   font-weight: 600;
   color: #1f6feb;
   margin-bottom: 5px;
 `;
 
-const StatLabel = styled.div`
+const LibraryStatLabel = styled.div`
   font-size: 14px;
   color: #8b949e;
 `;
@@ -3145,22 +3145,22 @@ const generatePDFReport = (data, timeRange, fileName) => {
 
               {/* Library Statistics */}
               <LibraryStats>
-                <StatCard>
-                  <StatValue>{getStorageStats().totalFiles}</StatValue>
-                  <StatLabel>Total Files</StatLabel>
-                </StatCard>
-                <StatCard>
-                  <StatValue>{getStorageStats().totalRecords.toLocaleString()}</StatValue>
-                  <StatLabel>Total Records</StatLabel>
-                </StatCard>
-                <StatCard>
-                  <StatValue>{filteredLibraryFiles.length}</StatValue>
-                  <StatLabel>Filtered Results</StatLabel>
-                </StatCard>
-                <StatCard>
-                  <StatValue>{getStorageStats().oldFiles}</StatValue>
-                  <StatLabel>Old Files (1+ year)</StatLabel>
-                </StatCard>
+                <LibraryStatCard>
+                  <LibraryStatValue>{getStorageStats().totalFiles}</LibraryStatValue>
+                  <LibraryStatLabel>Total Files</LibraryStatLabel>
+                </LibraryStatCard>
+                <LibraryStatCard>
+                  <LibraryStatValue>{getStorageStats().totalRecords.toLocaleString()}</LibraryStatValue>
+                  <LibraryStatLabel>Total Records</LibraryStatLabel>
+                </LibraryStatCard>
+                <LibraryStatCard>
+                  <LibraryStatValue>{filteredLibraryFiles.length}</LibraryStatValue>
+                  <LibraryStatLabel>Filtered Results</LibraryStatLabel>
+                </LibraryStatCard>
+                <LibraryStatCard>
+                  <LibraryStatValue>{getStorageStats().oldFiles}</LibraryStatValue>
+                  <LibraryStatLabel>Old Files (1+ year)</LibraryStatLabel>
+                </LibraryStatCard>
               </LibraryStats>
 
               {/* Library Files Grid */}
