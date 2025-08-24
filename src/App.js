@@ -1177,25 +1177,48 @@ const App = () => {
   useEffect(() => {
     const checkBackendStatus = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/health`);
+        // Set connecting status while checking
+        setBackendStatus('connecting');
+        
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/health`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          // Add timeout to prevent hanging
+          signal: AbortSignal.timeout(5000)
+        });
+        
         if (response.ok) {
           setBackendStatus('connected');
+          console.log('✅ Backend connected successfully');
         } else {
           setBackendStatus('error');
+          console.log('❌ Backend health check failed:', response.status);
         }
       } catch (error) {
         console.error('Backend connection error:', error);
-        // If we can't connect, it might be because the backend isn't deployed yet
         setBackendStatus('error');
       }
     };
 
-    // Only check if we have an API URL configured
-    if (process.env.REACT_APP_API_URL) {
+    // Auto-detect Render deployment and check connection
+    const apiUrl = process.env.REACT_APP_API_URL;
+    if (apiUrl) {
+      console.log('🔍 Checking backend connection at:', apiUrl);
       checkBackendStatus();
-      const interval = setInterval(checkBackendStatus, 30000); // Check every 30 seconds
-      return () => clearInterval(interval);
+      
+      // Check more frequently initially, then every 30 seconds
+      const initialInterval = setInterval(checkBackendStatus, 5000); // Check every 5 seconds initially
+      setTimeout(() => {
+        clearInterval(initialInterval);
+        const regularInterval = setInterval(checkBackendStatus, 30000); // Then every 30 seconds
+        return () => clearInterval(regularInterval);
+      }, 60000); // After 1 minute, switch to regular interval
+      
+      return () => clearInterval(initialInterval);
     } else {
+      console.log('⚠️ No API URL configured');
       setBackendStatus('error');
     }
   }, []);
@@ -2364,6 +2387,12 @@ const generatePDFReport = (data, timeRange, fileName) => {
               DataSense
             </span>
           </div>
+          <NavButton>
+            <StatusIndicator status={backendStatus}>
+              <StatusDot status={backendStatus} />
+              {backendStatus === 'connected' ? 'Connected' : backendStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+            </StatusIndicator>
+          </NavButton>
         </HeaderLeft>
         <HeaderRight>
           
@@ -2374,12 +2403,6 @@ const generatePDFReport = (data, timeRange, fileName) => {
           >
             <FiBarChart2 />
             {t('dashboard')}
-          </NavButton>
-          <NavButton>
-            <StatusIndicator status={backendStatus}>
-              <StatusDot status={backendStatus} />
-              {backendStatus === 'connected' ? 'Connected' : backendStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
-            </StatusIndicator>
           </NavButton>
           <NavButton 
             onClick={() => setShowSettings(true)}
