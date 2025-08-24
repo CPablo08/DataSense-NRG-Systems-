@@ -1035,18 +1035,18 @@ const StatValues = styled.div`
   margin-bottom: 8px;
 `;
 
-const StatValue = styled.div`
+const StatValueItem = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
 `;
 
-const StatLabel = styled.span`
+const StatValueLabel = styled.span`
   color: #8b949e;
   font-size: 12px;
 `;
 
-const StatNumber = styled.span`
+const StatValueNumber = styled.span`
   color: #1f6feb;
   font-weight: 600;
   font-size: 12px;
@@ -3257,18 +3257,18 @@ const generatePDFReport = (data, timeRange, fileName) => {
                                 <StatUnit>{data.unit}</StatUnit>
                               </StatHeader>
                               <StatValues>
-                                <StatValue>
-                                  <StatLabel>Avg:</StatLabel>
-                                  <StatNumber>{data.average}</StatNumber>
-                                </StatValue>
-                                <StatValue>
-                                  <StatLabel>Min:</StatLabel>
-                                  <StatNumber>{data.minimum}</StatNumber>
-                                </StatValue>
-                                <StatValue>
-                                  <StatLabel>Max:</StatLabel>
-                                  <StatNumber>{data.maximum}</StatNumber>
-                                </StatValue>
+                                <StatValueItem>
+                                  <StatValueLabel>Avg:</StatValueLabel>
+                                  <StatValueNumber>{data.average}</StatValueNumber>
+                                </StatValueItem>
+                                <StatValueItem>
+                                  <StatValueLabel>Min:</StatValueLabel>
+                                  <StatValueNumber>{data.minimum}</StatValueNumber>
+                                </StatValueItem>
+                                <StatValueItem>
+                                  <StatValueLabel>Max:</StatValueLabel>
+                                  <StatValueNumber>{data.maximum}</StatValueNumber>
+                                </StatValueItem>
                               </StatValues>
                               <StatReadings>{data.readings} readings</StatReadings>
                             </StatItem>
