@@ -85,6 +85,36 @@ monitor_thread = None
 websocket_connections: List[WebSocket] = []
 processed_data: List[Dict] = []
 
+def get_config_from_env() -> Optional[AppConfig]:
+    """Get configuration from environment variables"""
+    try:
+        email_server = os.getenv("EMAIL_SERVER")
+        email_username = os.getenv("EMAIL_USERNAME")
+        email_password = os.getenv("EMAIL_PASSWORD")
+        
+        if email_server and email_username and email_password:
+            return AppConfig(
+                email=EmailConfig(
+                    server=email_server,
+                    username=email_username,
+                    password=email_password,
+                    search_text=os.getenv("EMAIL_SEARCH_TEXT", "SymphoniePRO Logger data attached."),
+                    mail_folder=os.getenv("EMAIL_FOLDER", "INBOX"),
+                    file_extension=os.getenv("EMAIL_EXTENSION", ".rld"),
+                    delete_emails=os.getenv("EMAIL_DELETE", "false").lower() == "true"
+                ),
+                nrg=NRGConfig(
+                    output_folder=os.getenv("NRG_OUTPUT_FOLDER", "./converted"),
+                    file_filter=os.getenv("NRG_FILE_FILTER", "000110")
+                ),
+                monitor_interval=int(os.getenv("MONITOR_INTERVAL", "300")),
+                max_files_per_batch=int(os.getenv("MAX_FILES_PER_BATCH", "10"))
+            )
+    except Exception as e:
+        logger.error(f"Error getting config from env: {e}")
+    
+    return None
+
 class EmailMonitor:
     def __init__(self, config: AppConfig):
         self.config = config
@@ -246,18 +276,27 @@ class EmailMonitor:
 email_monitor = None
 
 def load_config() -> AppConfig:
-    """Load configuration from file"""
+    """Load configuration from environment variables or file"""
+    # First try environment variables (persistent on Render)
+    env_config = get_config_from_env()
+    if env_config:
+        logger.info("Configuration loaded from environment variables")
+        return env_config
+    
+    # Fallback to file-based config
     if os.path.exists(config_file):
         try:
             with open(config_file, 'r') as f:
                 config_data = json.load(f)
+            logger.info("Configuration loaded from file")
             return AppConfig(**config_data)
         except Exception as e:
-            logger.error(f"Error loading config: {e}")
+            logger.error(f"Error loading config from file: {e}")
             return get_default_config()
     else:
         config = get_default_config()
         save_config(config)
+        logger.info("Default configuration created")
         return config
 
 def get_default_config() -> AppConfig:
@@ -281,11 +320,17 @@ def get_default_config() -> AppConfig:
     )
 
 def save_config(config: AppConfig):
-    """Save configuration to file"""
+    """Save configuration to file and optionally to environment"""
     try:
+        # Save to file (for local development)
         with open(config_file, 'w') as f:
             json.dump(config.model_dump(), f, indent=2)
         logger.info(f"Configuration saved to {config_file}")
+        
+        # Note: Environment variables should be set in Render dashboard
+        # for production persistence
+        logger.info("For production persistence, set environment variables in Render dashboard")
+        
     except Exception as e:
         logger.error(f"Error saving config: {e}")
 
