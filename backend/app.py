@@ -282,7 +282,7 @@ def save_config(config: AppConfig):
     """Save configuration to file"""
     try:
         with open(config_file, 'w') as f:
-            json.dump(config.dict(), f, indent=2)
+            json.dump(config.model_dump(), f, indent=2)
         logger.info(f"Configuration saved to {config_file}")
     except Exception as e:
         logger.error(f"Error saving config: {e}")
@@ -397,7 +397,7 @@ async def get_config():
     """Get current configuration"""
     try:
         config = load_config()
-        return config.dict()
+        return config.model_dump()
     except Exception as e:
         logger.error(f"Error getting config: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -466,7 +466,7 @@ async def get_monitoring_status():
     """Get monitoring status"""
     return {
         "is_monitoring": is_monitoring,
-        "config": load_config().dict() if os.path.exists(config_file) else None
+        "config": load_config().model_dump() if os.path.exists(config_file) else None
     }
 
 @app.get("/api/data")
@@ -484,13 +484,13 @@ async def get_data():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/upload-data")
-async def upload_data(filename: str, content: str, processed_data: List[Dict]):
+async def upload_data(filename: str, content: str, new_data: List[Dict]):
     """Upload processed data (for manual uploads)"""
     try:
         global processed_data
         
         # Add to global data
-        processed_data.extend(processed_data)
+        processed_data.extend(new_data)
         
         # Save to file
         save_data(processed_data)
@@ -498,13 +498,13 @@ async def upload_data(filename: str, content: str, processed_data: List[Dict]):
         # Broadcast to WebSocket clients
         await broadcast_to_websockets({
             "type": "new_data",
-            "data": processed_data,
+            "data": new_data,
             "timestamp": datetime.now().isoformat()
         })
         
         return {
             "message": "Data uploaded successfully",
-            "records_added": len(processed_data)
+            "records_added": len(new_data)
         }
     except Exception as e:
         logger.error(f"Error uploading data: {e}")
