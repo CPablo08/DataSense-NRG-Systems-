@@ -199,6 +199,39 @@ def save_data(data: List[Dict]):
     except Exception as e:
         logger.error(f"Error saving data: {e}")
 
+def save_file_metadata(metadata: Dict):
+    """Save file metadata with timestamps"""
+    try:
+        metadata_file = "file_metadata.json"
+        existing_metadata = []
+        
+        if os.path.exists(metadata_file):
+            with open(metadata_file, 'r') as f:
+                existing_metadata = json.load(f)
+        
+        # Add new metadata
+        existing_metadata.append(metadata)
+        
+        # Save updated metadata
+        with open(metadata_file, 'w') as f:
+            json.dump(existing_metadata, f, indent=2)
+        
+        logger.info(f"File metadata saved: {metadata['filename']}")
+    except Exception as e:
+        logger.error(f"Error saving file metadata: {e}")
+
+def get_file_metadata() -> List[Dict]:
+    """Get all file metadata"""
+    try:
+        metadata_file = "file_metadata.json"
+        if os.path.exists(metadata_file):
+            with open(metadata_file, 'r') as f:
+                return json.load(f)
+        return []
+    except Exception as e:
+        logger.error(f"Error loading file metadata: {e}")
+        return []
+
 async def broadcast_to_websockets(message: Dict):
     """Broadcast message to all connected WebSocket clients"""
     if websocket_connections:
@@ -256,6 +289,19 @@ async def process_rld_file(file: UploadFile = File(...)):
         # Save to file
         save_data(processed_data)
         
+        # Create file metadata with timestamp
+        file_metadata = {
+            "filename": file.filename,
+            "timestamp": datetime.now().isoformat(),
+            "records_added": len(new_data),
+            "file_size": len(content),
+            "processing_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "status": "processed"
+        }
+        
+        # Save file metadata to database or file
+        save_file_metadata(file_metadata)
+        
         # Broadcast to WebSocket clients
         await broadcast_to_websockets({
             "type": "new_data",
@@ -285,6 +331,20 @@ async def get_data():
         }
     except Exception as e:
         logger.error(f"Error getting data: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/files")
+async def get_files():
+    """Get all file metadata with timestamps"""
+    try:
+        metadata = get_file_metadata()
+        return {
+            "files": metadata,
+            "count": len(metadata),
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting file metadata: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/upload-data")

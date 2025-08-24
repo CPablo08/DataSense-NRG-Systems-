@@ -203,6 +203,20 @@ class ApiService {
       throw error;
     }
   }
+
+  // Get file metadata with timestamps
+  async getFileMetadata() {
+    try {
+      const response = await fetch(`${this.baseURL}/api/files`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting file metadata:', error);
+      throw error;
+    }
+  }
 }
 
 // Create singleton instance

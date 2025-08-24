@@ -706,6 +706,281 @@ const ChartWrapper = styled.div`
   height: 200px;
 `;
 
+// Library View Styled Components
+const SearchFilterSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: ${props => props.theme === 'light' ? '#ffffff' : '#161b22'};
+  border: 1px solid ${props => props.theme === 'light' ? '#e1e4e8' : '#30363d'};
+  border-radius: 8px;
+`;
+
+const SearchBox = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  
+  svg {
+    position: absolute;
+    left: 12px;
+    color: #8b949e;
+    z-index: 1;
+  }
+  
+  input {
+    width: 100%;
+    padding: 12px 12px 12px 40px;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    background: #0d1117;
+    color: #ffffff;
+    font-size: 14px;
+    
+    &::placeholder {
+      color: #8b949e;
+    }
+    
+    &:focus {
+      outline: none;
+      border-color: #1f6feb;
+      box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.1);
+    }
+  }
+`;
+
+const FilterSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+const TagFilter = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  
+  label {
+    color: #ffffff;
+    font-weight: 500;
+    font-size: 14px;
+  }
+`;
+
+const TagButtons = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const TagButton = styled.button`
+  padding: 6px 12px;
+  border: 1px solid ${props => props.active ? '#1f6feb' : '#30363d'};
+  border-radius: 16px;
+  background: ${props => props.active ? '#1f6feb' : 'transparent'};
+  color: ${props => props.active ? '#ffffff' : '#8b949e'};
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: ${props => props.active ? '#1f6feb' : '#21262d'};
+    border-color: ${props => props.active ? '#1f6feb' : '#8b949e'};
+  }
+`;
+
+const LibraryStats = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+`;
+
+const StatCard = styled.div`
+  padding: 20px;
+  background: ${props => props.theme === 'light' ? '#ffffff' : '#161b22'};
+  border: 1px solid ${props => props.theme === 'light' ? '#e1e4e8' : '#30363d'};
+  border-radius: 8px;
+  text-align: center;
+`;
+
+const StatValue = styled.div`
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f6feb;
+  margin-bottom: 5px;
+`;
+
+const StatLabel = styled.div`
+  font-size: 14px;
+  color: #8b949e;
+`;
+
+const LibraryGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 20px;
+`;
+
+const LibraryCard = styled.div`
+  padding: 20px;
+  background: ${props => props.theme === 'light' ? '#ffffff' : '#161b22'};
+  border: 1px solid ${props => props.theme === 'light' ? '#e1e4e8' : '#30363d'};
+  border-radius: 8px;
+  transition: all 0.2s;
+  
+  &:hover {
+    border-color: #1f6feb;
+    box-shadow: 0 4px 12px rgba(31, 111, 235, 0.1);
+  }
+`;
+
+const LibraryCardHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+`;
+
+const FileIcon = styled.div`
+  width: 40px;
+  height: 40px;
+  background: #1f6feb;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 18px;
+`;
+
+const FileInfo = styled.div`
+  flex: 1;
+`;
+
+const FileName = styled.div`
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 5px;
+  font-size: 16px;
+`;
+
+const FileMeta = styled.div`
+  display: flex;
+  gap: 8px;
+  color: #8b949e;
+  font-size: 12px;
+  
+  span {
+    &:not(:last-child)::after {
+      content: '•';
+      margin-left: 8px;
+    }
+  }
+`;
+
+const FileActions = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const ActionButton = styled.button`
+  width: 32px;
+  height: 32px;
+  border: 1px solid ${props => props.danger ? '#f85149' : '#30363d'};
+  border-radius: 6px;
+  background: ${props => props.danger ? '#f85149' : 'transparent'};
+  color: ${props => props.danger ? '#ffffff' : '#8b949e'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: ${props => props.danger ? '#f85149' : '#21262d'};
+    color: #ffffff;
+  }
+`;
+
+const FileTags = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+`;
+
+const Tag = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  color: #8b949e;
+  font-size: 12px;
+`;
+
+const RemoveTag = styled.button`
+  background: none;
+  border: none;
+  color: #8b949e;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  
+  &:hover {
+    color: #f85149;
+  }
+`;
+
+const AddTagSection = styled.div`
+  input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    background: #0d1117;
+    color: #ffffff;
+    font-size: 12px;
+    
+    &::placeholder {
+      color: #8b949e;
+    }
+    
+    &:focus {
+      outline: none;
+      border-color: #1f6feb;
+    }
+  }
+`;
+
+const EmptyState = styled.div`
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: #8b949e;
+  
+  svg {
+    font-size: 48px;
+    margin-bottom: 20px;
+    color: #30363d;
+  }
+  
+  h3 {
+    margin-bottom: 10px;
+    color: #ffffff;
+  }
+  
+  p {
+    font-size: 14px;
+  }
+`;
+
 // Translations
 const translations = {
   en: {
@@ -798,6 +1073,7 @@ const translations = {
     chartType: 'Chart Type',
     sensorUnits: 'Sensor Units',
     exportData: 'Export Data',
+    searchFiles: 'Search files...',
     importData: 'Import Data',
     backupData: 'Backup Data',
     restoreData: 'Restore Data',
@@ -1006,6 +1282,7 @@ const translations = {
     chartType: 'Tipo de Gráfico',
     sensorUnits: 'Unidades de Sensores',
     exportData: 'Exportar Datos',
+    searchFiles: 'Buscar archivos...',
     importData: 'Importar Datos',
     backupData: 'Respaldar Datos',
     restoreData: 'Restaurar Datos',
@@ -1257,45 +1534,85 @@ const App = () => {
 
 
 
-  // Load library files from localStorage on app start and clean old data
+  // Load library files from localStorage and backend on app start
   useEffect(() => {
-    const savedFiles = localStorage.getItem('datasenseLibraryFiles');
-    if (savedFiles) {
-      const files = JSON.parse(savedFiles);
+    const loadFiles = async () => {
+      // Load local files
+      const savedFiles = localStorage.getItem('datasenseLibraryFiles');
+      let localFiles = [];
       
-      // Clean old data (older than 1 year)
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-      
-      const currentTime = new Date();
-      const cleanedFiles = files.filter(file => {
-        const fileDate = new Date(file.date);
-        const isOlderThanOneYear = fileDate < oneYearAgo;
+      if (savedFiles) {
+        const files = JSON.parse(savedFiles);
         
-        if (isOlderThanOneYear) {
-          console.log(`Auto-deleting old file: ${file.name} (${fileDate.toLocaleDateString()})`);
+        // Clean old data (older than 1 year)
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        
+        const currentTime = new Date();
+        const cleanedFiles = files.filter(file => {
+          const fileDate = new Date(file.date);
+          const isOlderThanOneYear = fileDate < oneYearAgo;
+          
+          if (isOlderThanOneYear) {
+            console.log(`Auto-deleting old file: ${file.name} (${fileDate.toLocaleDateString()})`);
+          }
+          
+          return !isOlderThanOneYear;
+        });
+        
+        // Update localStorage with cleaned data
+        if (cleanedFiles.length !== files.length) {
+          localStorage.setItem('datasenseLibraryFiles', JSON.stringify(cleanedFiles));
+          console.log(`Auto-cleanup: Removed ${files.length - cleanedFiles.length} old files`);
         }
         
-        return !isOlderThanOneYear;
-      });
-      
-      // Update localStorage with cleaned data
-      if (cleanedFiles.length !== files.length) {
-        localStorage.setItem('datasenseLibraryFiles', JSON.stringify(cleanedFiles));
-        console.log(`Auto-cleanup: Removed ${files.length - cleanedFiles.length} old files`);
+        localFiles = cleanedFiles;
       }
       
-      setLibraryFiles(cleanedFiles);
-      
-      // Extract all unique tags from cleaned files
-      const allTags = new Set();
-      cleanedFiles.forEach(file => {
-        if (file.tags && Array.isArray(file.tags)) {
-          file.tags.forEach(tag => allTags.add(tag));
-        }
-      });
-      setAvailableTags(Array.from(allTags));
-    }
+      // Load backend files
+      try {
+        const backendResponse = await apiService.getFileMetadata();
+        const backendFiles = backendResponse.files.map(file => ({
+          id: `backend-${file.filename}`,
+          name: file.filename,
+          date: file.timestamp,
+          records: file.records_added,
+          size: file.file_size,
+          processingDate: file.processing_date,
+          status: file.status,
+          source: 'backend',
+          tags: []
+        }));
+        
+        // Combine local and backend files
+        const allFiles = [...localFiles, ...backendFiles];
+        setLibraryFiles(allFiles);
+        
+        // Extract all unique tags
+        const allTags = new Set();
+        allFiles.forEach(file => {
+          if (file.tags && Array.isArray(file.tags)) {
+            file.tags.forEach(tag => allTags.add(tag));
+          }
+        });
+        setAvailableTags(Array.from(allTags));
+        
+      } catch (error) {
+        console.log('Backend not available, using local files only');
+        setLibraryFiles(localFiles);
+        
+        // Extract tags from local files only
+        const allTags = new Set();
+        localFiles.forEach(file => {
+          if (file.tags && Array.isArray(file.tags)) {
+            file.tags.forEach(tag => allTags.add(tag));
+          }
+        });
+        setAvailableTags(Array.from(allTags));
+      }
+    };
+    
+    loadFiles();
   }, []);
 
 
@@ -2440,6 +2757,13 @@ const generatePDFReport = (data, timeRange, fileName) => {
             {t('dashboard')}
           </NavButton>
           <NavButton 
+            active={currentView === 'library'}
+            onClick={() => setCurrentView('library')}
+          >
+            <FiFolder />
+            {t('library')}
+          </NavButton>
+          <NavButton 
             onClick={() => setShowSettings(true)}
           >
             <FiSettings />
@@ -2761,8 +3085,158 @@ const generatePDFReport = (data, timeRange, fileName) => {
             </DashboardView>
           )}
 
+          {currentView === 'library' && (
+            <DashboardView>
+              <DashboardHeader>
+                <div>
+                  <DashboardTitle>
+                    <FiFolder />
+                    {t('historicalDataLibrary')}
+                  </DashboardTitle>
+                  <DashboardSubtitle>Browse and search historical RLD data files</DashboardSubtitle>
+                </div>
+                
+                <InteractiveControls>
+                  <ControlButton 
+                    onClick={triggerCleanup}
+                    title="Clean up old files"
+                  >
+                    <FiTrash2 />
+                    Cleanup
+                  </ControlButton>
+                </InteractiveControls>
+              </DashboardHeader>
 
+              {/* Search and Filter Section */}
+              <SearchFilterSection>
+                <SearchBox>
+                  <FiSearch />
+                  <input
+                    type="text"
+                    placeholder={t('searchFiles')}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </SearchBox>
+                
+                <FilterSection>
+                  <TagFilter>
+                    <label>Filter by tags:</label>
+                    <TagButtons>
+                      {availableTags.map(tag => (
+                        <TagButton
+                          key={tag}
+                          active={selectedTags.includes(tag)}
+                          onClick={() => {
+                            if (selectedTags.includes(tag)) {
+                              setSelectedTags(selectedTags.filter(t => t !== tag));
+                            } else {
+                              setSelectedTags([...selectedTags, tag]);
+                            }
+                          }}
+                        >
+                          {tag}
+                        </TagButton>
+                      ))}
+                    </TagButtons>
+                  </TagFilter>
+                </FilterSection>
+              </SearchFilterSection>
 
+              {/* Library Statistics */}
+              <LibraryStats>
+                <StatCard>
+                  <StatValue>{getStorageStats().totalFiles}</StatValue>
+                  <StatLabel>Total Files</StatLabel>
+                </StatCard>
+                <StatCard>
+                  <StatValue>{getStorageStats().totalRecords.toLocaleString()}</StatValue>
+                  <StatLabel>Total Records</StatLabel>
+                </StatCard>
+                <StatCard>
+                  <StatValue>{filteredLibraryFiles.length}</StatValue>
+                  <StatLabel>Filtered Results</StatLabel>
+                </StatCard>
+                <StatCard>
+                  <StatValue>{getStorageStats().oldFiles}</StatValue>
+                  <StatLabel>Old Files (1+ year)</StatLabel>
+                </StatCard>
+              </LibraryStats>
+
+              {/* Library Files Grid */}
+              <LibraryGrid>
+                {filteredLibraryFiles.length === 0 ? (
+                  <EmptyState>
+                    <FiFolder />
+                    <h3>No files found</h3>
+                    <p>Upload and process RLD files to see them here</p>
+                  </EmptyState>
+                ) : (
+                  filteredLibraryFiles.map((file) => (
+                    <LibraryCard key={file.id}>
+                      <LibraryCardHeader>
+                        <FileIcon>
+                          <FiFile />
+                        </FileIcon>
+                        <FileInfo>
+                          <FileName>{file.name}</FileName>
+                                                   <FileMeta>
+                           <span>{file.records} records</span>
+                           <span>•</span>
+                           <span>{file.processingDate || new Date(file.date).toLocaleDateString()}</span>
+                           <span>•</span>
+                           <span>{file.source === 'backend' ? 'Server' : 'Local'}</span>
+                         </FileMeta>
+                        </FileInfo>
+                        <FileActions>
+                          <ActionButton
+                            onClick={() => loadLibraryFile(file)}
+                            title="Load this file"
+                          >
+                            <FiPlay />
+                          </ActionButton>
+                          <ActionButton
+                            onClick={() => deleteLibraryFile(file.id)}
+                            title="Delete this file"
+                            danger
+                          >
+                            <FiTrash2 />
+                          </ActionButton>
+                        </FileActions>
+                      </LibraryCardHeader>
+                      
+                      {file.tags && file.tags.length > 0 && (
+                        <FileTags>
+                          {file.tags.map(tag => (
+                            <Tag key={tag}>
+                              {tag}
+                              <RemoveTag onClick={() => removeTagFromFile(file.id, tag)}>
+                                <FiX />
+                              </RemoveTag>
+                            </Tag>
+                          ))}
+                        </FileTags>
+                      )}
+                      
+                      <AddTagSection>
+                        <input
+                          type="text"
+                          placeholder="Add tag..."
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && e.target.value.trim()) {
+                              addTagToFile(file.id, e.target.value.trim());
+                              addNewTag(e.target.value.trim());
+                              e.target.value = '';
+                            }
+                          }}
+                        />
+                      </AddTagSection>
+                    </LibraryCard>
+                  ))
+                )}
+              </LibraryGrid>
+            </DashboardView>
+          )}
 
         </ContentArea>
       </MainContent>
