@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
 """
-NRG DataSense Unified Backend
-FastAPI backend with email monitoring, local nrgpy conversion, and real-time data processing
+NRG DataSense Backend
+FastAPI backend for RLD file processing and data visualization
 """
 
 import os
 import json
-import time
-import threading
 import logging
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-import asyncio
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,15 +17,14 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uvicorn
 
-# Import NRG libraries
+# Import NRG library
 try:
     import nrgpy
-    from data_email_client import mailer
-    print("✅ NRG libraries imported successfully")
+    print("✅ NRG library imported successfully")
 except ImportError as e:
-    print(f"❌ Error importing NRG libraries: {e}")
-    print("Please ensure nrgpy and data_email_client are installed")
-    raise ImportError(f"Required NRG libraries not available: {e}")
+    print(f"❌ Error importing NRG library: {e}")
+    print("Please ensure nrgpy is installed")
+    raise ImportError(f"Required NRG library not available: {e}")
 
 # Configure logging
 logging.basicConfig(
@@ -58,281 +54,126 @@ app.add_middleware(
 )
 
 # Data models
-class EmailConfig(BaseModel):
-    server: str
-    username: str
-    password: str
-    search_text: str = "SymphoniePRO Logger data attached."
-    mail_folder: str = "INBOX"
-    file_extension: str = ".rld"
-    delete_emails: bool = False
-
 class NRGConfig(BaseModel):
     output_folder: str = "./converted"
     file_filter: str = "000110"
 
-class AppConfig(BaseModel):
-    email: EmailConfig
-    nrg: NRGConfig
-    monitor_interval: int = 300
-    max_files_per_batch: int = 10
+class ProcessedData(BaseModel):
+    timestamp: str
+    data: List[Dict[str, Any]]
+    file_count: int
+    total_records: int
 
 # Global variables
-config_file = "app_config.json"
 data_storage_file = "data_storage.json"
-is_monitoring = False
-monitor_thread = None
 websocket_connections: List[WebSocket] = []
 processed_data: List[Dict] = []
 
-def get_config_from_env() -> Optional[AppConfig]:
-    """Get configuration from environment variables"""
+def setup_directories():
+    """Create necessary directories"""
+    dirs = ["uploads", "converted", "logs"]
+    for dir_name in dirs:
+        Path(dir_name).mkdir(exist_ok=True)
+        logger.info(f"Created directory: {dir_name}")
+
+def convert_rld_to_txt(rld_file_path: str, output_folder: str = "./converted") -> str:
+    """Convert RLD file to TXT using local nrgpy"""
     try:
-        email_server = os.getenv("EMAIL_SERVER")
-        email_username = os.getenv("EMAIL_USERNAME")
-        email_password = os.getenv("EMAIL_PASSWORD")
+        logger.info(f"Converting {rld_file_path} to TXT...")
         
-        if email_server and email_username and email_password:
-            return AppConfig(
-                email=EmailConfig(
-                    server=email_server,
-                    username=email_username,
-                    password=email_password,
-                    search_text=os.getenv("EMAIL_SEARCH_TEXT", "SymphoniePRO Logger data attached."),
-                    mail_folder=os.getenv("EMAIL_FOLDER", "INBOX"),
-                    file_extension=os.getenv("EMAIL_EXTENSION", ".rld"),
-                    delete_emails=os.getenv("EMAIL_DELETE", "false").lower() == "true"
-                ),
-                nrg=NRGConfig(
-                    output_folder=os.getenv("NRG_OUTPUT_FOLDER", "./converted"),
-                    file_filter=os.getenv("NRG_FILE_FILTER", "000110")
-                ),
-                monitor_interval=int(os.getenv("MONITOR_INTERVAL", "300")),
-                max_files_per_batch=int(os.getenv("MAX_FILES_PER_BATCH", "10"))
-            )
-    except Exception as e:
-        logger.error(f"Error getting config from env: {e}")
-    
-    return None
-
-class EmailMonitor:
-    def __init__(self, config: AppConfig):
-        self.config = config
-        self.setup_directories()
-        
-    def setup_directories(self):
-        """Create necessary directories"""
-        dirs = ["downloads", "converted", "logs"]
-        for dir_name in dirs:
-            Path(dir_name).mkdir(exist_ok=True)
-            logger.info(f"Created directory: {dir_name}")
-    
-    def download_email_attachments(self) -> List[str]:
-        """Download RLD attachments from emails"""
-            
-        try:
-            email_config = self.config.email
-            
-            # Initialize email client
-            imap = mailer(
-                server=email_config.server,
-                username=email_config.username,
-                password=email_config.password
-            )
-            
-            # Search for data emails
-            body_text = email_config.search_text
-            data_boxes = [box for box in imap.mailboxes if 'data' in box.lower()]
-            
-            if not data_boxes:
-                data_boxes = [email_config.mail_folder]
-            
-            # Search for messages with attachments
-            imap.search_for_messages(
-                body_text=body_text,
-                area='body',
-                folder=data_boxes
-            )
-            
-            # Download attachments
-            downloaded_files = imap.download_attachments(
-                out_dir=email_config.file_extension.replace('.', ''),
-                extension=email_config.file_extension,
-                delete=email_config.delete_emails,
-                archive_folder=f"{email_config.mail_folder}/Archive"
-            )
-            
-            logger.info(f"Downloaded {len(downloaded_files)} RLD files")
-            return downloaded_files
-            
-        except Exception as e:
-            logger.error(f"Error downloading email attachments: {e}")
-            return []
-    
-    def convert_rld_to_txt(self, rld_files: List[str]) -> List[str]:
-        """Convert RLD files to TXT using local nrgpy"""
-            
-        converted_files = []
-        
-        for rld_file in rld_files:
-            try:
-                logger.info(f"Converting {rld_file} to TXT...")
-                
-                # Use nrgpy.local_rld for local conversion
-                converter = nrgpy.local_rld(
-                    rld_dir=os.path.dirname(rld_file),
-                    out_dir=self.config.nrg.output_folder,
-                    file_filter=self.config.nrg.file_filter
-                )
-                
-                # Convert the file
-                converter.convert()
-                
-                # Find the converted TXT file
-                txt_file = rld_file.replace('.rld', '.txt')
-                txt_file = os.path.join(self.config.nrg.output_folder, os.path.basename(txt_file))
-                
-                if os.path.exists(txt_file):
-                    converted_files.append(txt_file)
-                    logger.info(f"Successfully converted {rld_file} to {txt_file}")
-                else:
-                    logger.warning(f"TXT file not found for {rld_file}")
-                    
-            except Exception as e:
-                logger.error(f"Error converting {rld_file}: {e}")
-        
-        return converted_files
-    
-    def process_txt_file(self, txt_file: str) -> List[Dict]:
-        """Process TXT file and extract sensor data"""
-        try:
-            with open(txt_file, 'r') as f:
-                content = f.read()
-            
-            # Parse the TXT file
-            lines = content.split('\n')
-            processed_data = []
-            
-            # Find data section
-            data_start = -1
-            headers = []
-            
-            for i, line in enumerate(lines):
-                if line.strip().startswith('Timestamp'):
-                    data_start = i + 1
-                    headers = line.split('\t')
-                    break
-            
-            if data_start == -1:
-                logger.warning(f"No data section found in {txt_file}")
-                return []
-            
-            # Process data lines
-            for i in range(data_start, len(lines)):
-                line = lines[i].strip()
-                if not line or line.startswith('#'):
-                    continue
-                
-                try:
-                    # Parse tab-separated values
-                    values = line.split('\t')
-                    if len(values) < 10:
-                        continue
-                    
-                    # Extract timestamp
-                    timestamp = values[0] if values[0] else datetime.now().isoformat()
-                    
-                    # Create data record
-                    record = {
-                        "time": timestamp,
-                        "timestamp": timestamp,
-                        "filename": os.path.basename(txt_file),
-                        "NRG_40C_Anem": float(values[1]) if len(values) > 1 and values[1] else 0,
-                        "NRG_200M_Vane": float(values[2]) if len(values) > 2 and values[2] else 0,
-                        "NRG_T60_Temp": float(values[3]) if len(values) > 3 and values[3] else 0,
-                        "NRG_RH5X_Humi": float(values[4]) if len(values) > 4 and values[4] else 0,
-                        "NRG_BP60_Baro": float(values[5]) if len(values) > 5 and values[5] else 0,
-                        "Rain_Gauge": float(values[6]) if len(values) > 6 and values[6] else 0,
-                        "NRG_PVT1_PV_Temp": float(values[7]) if len(values) > 7 and values[7] else 0,
-                        "PSM_c_Si_Isc_Soil": float(values[8]) if len(values) > 8 and values[8] else 0,
-                        "PSM_c_Si_Isc_Clean": float(values[9]) if len(values) > 9 and values[9] else 0,
-                        "Average_12V_Battery": float(values[10]) if len(values) > 10 and values[10] else 0
-                    }
-                    
-                    processed_data.append(record)
-                    
-                except Exception as e:
-                    logger.warning(f"Error parsing line {i+1} in {txt_file}: {e}")
-                    continue
-            
-            logger.info(f"Processed {len(processed_data)} records from {txt_file}")
-            return processed_data
-            
-        except Exception as e:
-            logger.error(f"Error processing {txt_file}: {e}")
-            return []
-
-# Global email monitor instance
-email_monitor = None
-
-def load_config() -> AppConfig:
-    """Load configuration from environment variables or file"""
-    # First try environment variables (persistent on Render)
-    env_config = get_config_from_env()
-    if env_config:
-        logger.info("Configuration loaded from environment variables")
-        return env_config
-    
-    # Fallback to file-based config
-    if os.path.exists(config_file):
-        try:
-            with open(config_file, 'r') as f:
-                config_data = json.load(f)
-            logger.info("Configuration loaded from file")
-            return AppConfig(**config_data)
-        except Exception as e:
-            logger.error(f"Error loading config from file: {e}")
-            return get_default_config()
-    else:
-        config = get_default_config()
-        save_config(config)
-        logger.info("Default configuration created")
-        return config
-
-def get_default_config() -> AppConfig:
-    """Get default configuration"""
-    return AppConfig(
-        email=EmailConfig(
-            server="outlook.office365.com",
-            username="",
-            password="",
-            search_text="SymphoniePRO Logger data attached.",
-            mail_folder="INBOX",
-            file_extension=".rld",
-            delete_emails=False
-        ),
-        nrg=NRGConfig(
-            output_folder="./converted",
+        # Use nrgpy.local_rld for local conversion
+        converter = nrgpy.local_rld(
+            rld_dir=os.path.dirname(rld_file_path),
+            out_dir=output_folder,
             file_filter="000110"
-        ),
-        monitor_interval=300,
-        max_files_per_batch=10
-    )
-
-def save_config(config: AppConfig):
-    """Save configuration to file and optionally to environment"""
-    try:
-        # Save to file (for local development)
-        with open(config_file, 'w') as f:
-            json.dump(config.model_dump(), f, indent=2)
-        logger.info(f"Configuration saved to {config_file}")
+        )
         
-        # Note: Environment variables should be set in Render dashboard
-        # for production persistence
-        logger.info("For production persistence, set environment variables in Render dashboard")
+        # Convert the file
+        converter.convert()
+        
+        # Find the converted TXT file
+        txt_file = rld_file_path.replace('.rld', '.txt')
+        txt_file = os.path.join(output_folder, os.path.basename(txt_file))
+        
+        if os.path.exists(txt_file):
+            logger.info(f"Successfully converted {rld_file_path} to {txt_file}")
+            return txt_file
+        else:
+            logger.warning(f"TXT file not found for {rld_file_path}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Error converting {rld_file_path}: {e}")
+        return None
+
+def process_txt_file(txt_file: str) -> List[Dict]:
+    """Process TXT file and extract sensor data"""
+    try:
+        with open(txt_file, 'r') as f:
+            content = f.read()
+        
+        # Parse the TXT file
+        lines = content.split('\n')
+        processed_data = []
+        
+        # Find data section
+        data_start = -1
+        headers = []
+        
+        for i, line in enumerate(lines):
+            if line.strip().startswith('Timestamp'):
+                data_start = i + 1
+                headers = line.split('\t')
+                break
+        
+        if data_start == -1:
+            logger.warning(f"No data section found in {txt_file}")
+            return []
+        
+        # Process data lines
+        for i in range(data_start, len(lines)):
+            line = lines[i].strip()
+            if not line or line.startswith('#'):
+                continue
+            
+            try:
+                # Parse tab-separated values
+                values = line.split('\t')
+                if len(values) < 10:
+                    continue
+                
+                # Extract timestamp
+                timestamp = values[0] if values[0] else datetime.now().isoformat()
+                
+                # Create data record
+                record = {
+                    "time": timestamp,
+                    "timestamp": timestamp,
+                    "filename": os.path.basename(txt_file),
+                    "NRG_40C_Anem": float(values[1]) if len(values) > 1 and values[1] else 0,
+                    "NRG_200M_Vane": float(values[2]) if len(values) > 2 and values[2] else 0,
+                    "NRG_T60_Temp": float(values[3]) if len(values) > 3 and values[3] else 0,
+                    "NRG_RH5X_Humi": float(values[4]) if len(values) > 4 and values[4] else 0,
+                    "NRG_BP60_Baro": float(values[5]) if len(values) > 5 and values[5] else 0,
+                    "Rain_Gauge": float(values[6]) if len(values) > 6 and values[6] else 0,
+                    "NRG_PVT1_PV_Temp": float(values[7]) if len(values) > 7 and values[7] else 0,
+                    "PSM_c_Si_Isc_Soil": float(values[8]) if len(values) > 8 and values[8] else 0,
+                    "PSM_c_Si_Isc_Clean": float(values[9]) if len(values) > 9 and values[9] else 0,
+                    "Average_12V_Battery": float(values[10]) if len(values) > 10 and values[10] else 0
+                }
+                
+                processed_data.append(record)
+                
+            except Exception as e:
+                logger.warning(f"Error parsing line {i+1} in {txt_file}: {e}")
+                continue
+        
+        logger.info(f"Processed {len(processed_data)} records from {txt_file}")
+        return processed_data
         
     except Exception as e:
-        logger.error(f"Error saving config: {e}")
+        logger.error(f"Error processing {txt_file}: {e}")
+        return []
 
 def load_data() -> List[Dict]:
     """Load processed data from file"""
@@ -362,62 +203,6 @@ async def broadcast_to_websockets(message: Dict):
             except Exception as e:
                 logger.error(f"Error sending to WebSocket: {e}")
 
-def monitor_emails():
-    """Background email monitoring function"""
-    global email_monitor, processed_data
-    
-    while is_monitoring:
-        try:
-            logger.info("Checking for new emails...")
-            
-            # Download email attachments
-            rld_files = email_monitor.download_email_attachments()
-            
-            if rld_files:
-                # Convert RLD to TXT
-                txt_files = email_monitor.convert_rld_to_txt(rld_files)
-                
-                if txt_files:
-                    # Process each TXT file
-                    for txt_file in txt_files:
-                        try:
-                            # Process the data
-                            new_data = email_monitor.process_txt_file(txt_file)
-                            
-                            if new_data:
-                                # Add to global data
-                                processed_data.extend(new_data)
-                                
-                                # Save to file
-                                save_data(processed_data)
-                                
-                                # Broadcast to WebSocket clients
-                                threading.Thread(
-                                    target=lambda: asyncio.run(
-                                        broadcast_to_websockets({
-                                            "type": "new_data",
-                                            "data": new_data,
-                                            "timestamp": datetime.now().isoformat()
-                                        })
-                                    )
-                                ).start()
-                                
-                                logger.info(f"Successfully processed {len(new_data)} records from {txt_file}")
-                            else:
-                                logger.warning(f"No data extracted from {txt_file}")
-                                
-                        except Exception as e:
-                            logger.error(f"Error processing {txt_file}: {e}")
-            else:
-                logger.info("No new RLD files found")
-            
-            # Wait for next check
-            time.sleep(email_monitor.config.monitor_interval)
-            
-        except Exception as e:
-            logger.error(f"Error in email monitoring: {e}")
-            time.sleep(60)  # Wait 1 minute before retrying
-
 # API Endpoints
 @app.get("/")
 async def root():
@@ -439,82 +224,49 @@ async def health_check():
         "monitoring": is_monitoring
     }
 
-@app.get("/api/config")
-async def get_config():
-    """Get current configuration"""
+@app.post("/api/process-rld")
+async def process_rld_file(file: UploadFile = File(...)):
+    """Process uploaded RLD file"""
     try:
-        config = load_config()
-        return config.model_dump()
+        # Save uploaded file
+        upload_path = f"uploads/{file.filename}"
+        with open(upload_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Convert RLD to TXT
+        txt_file = convert_rld_to_txt(upload_path)
+        if not txt_file:
+            raise HTTPException(status_code=400, detail="Failed to convert RLD file")
+        
+        # Process TXT file
+        new_data = process_txt_file(txt_file)
+        if not new_data:
+            raise HTTPException(status_code=400, detail="No data extracted from file")
+        
+        # Add to global data
+        global processed_data
+        processed_data.extend(new_data)
+        
+        # Save to file
+        save_data(processed_data)
+        
+        # Broadcast to WebSocket clients
+        await broadcast_to_websockets({
+            "type": "new_data",
+            "data": new_data,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        return {
+            "message": "RLD file processed successfully",
+            "records_added": len(new_data),
+            "filename": file.filename
+        }
+        
     except Exception as e:
-        logger.error(f"Error getting config: {e}")
+        logger.error(f"Error processing RLD file: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/config")
-async def update_config(config: AppConfig):
-    """Update configuration"""
-    try:
-        save_config(config)
-        
-        # Restart monitoring if running
-        global email_monitor, is_monitoring
-        if is_monitoring:
-            await stop_monitoring()
-            email_monitor = EmailMonitor(config)
-            await start_monitoring()
-        
-        return {"message": "Configuration updated successfully"}
-    except Exception as e:
-        logger.error(f"Error updating config: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/monitoring/start")
-async def start_monitoring():
-    """Start email monitoring"""
-    global is_monitoring, monitor_thread, email_monitor
-    
-    if is_monitoring:
-        return {"message": "Monitoring is already running"}
-    
-    try:
-        config = load_config()
-        email_monitor = EmailMonitor(config)
-        
-        is_monitoring = True
-        monitor_thread = threading.Thread(target=monitor_emails, daemon=True)
-        monitor_thread.start()
-        
-        logger.info("Email monitoring started")
-        return {"message": "Email monitoring started successfully"}
-    except Exception as e:
-        logger.error(f"Error starting monitoring: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/monitoring/stop")
-async def stop_monitoring():
-    """Stop email monitoring"""
-    global is_monitoring
-    
-    if not is_monitoring:
-        return {"message": "Monitoring is not running"}
-    
-    try:
-        is_monitoring = False
-        if monitor_thread and monitor_thread.is_alive():
-            monitor_thread.join(timeout=5)
-        
-        logger.info("Email monitoring stopped")
-        return {"message": "Email monitoring stopped successfully"}
-    except Exception as e:
-        logger.error(f"Error stopping monitoring: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/monitoring/status")
-async def get_monitoring_status():
-    """Get monitoring status"""
-    return {
-        "is_monitoring": is_monitoring,
-        "config": load_config().model_dump() if os.path.exists(config_file) else None
-    }
 
 @app.get("/api/data")
 async def get_data():

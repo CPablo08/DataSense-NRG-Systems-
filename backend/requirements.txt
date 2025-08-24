@@ -6,6 +6,5 @@ websockets==12.0
 requests==2.31.0
 pandas==2.3.2
 numpy==2.3.2
-# NRG packages - use correct versions
+# NRG package
 nrgpy>=0.7.0
-data-email-client==0.1.6
