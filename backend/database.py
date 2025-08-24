@@ -1,0 +1,61 @@
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Text, JSON
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+import os
+from datetime import datetime
+
+# Database URL from environment variable
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./nrg_config.db")
+
+# Create SQLAlchemy engine
+engine = create_engine(DATABASE_URL)
+
+# Create SessionLocal class
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Create Base class
+Base = declarative_base()
+
+# Database Models
+class FileMetadata(Base):
+    __tablename__ = "file_metadata"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    records_added = Column(Integer)
+    file_size = Column(Integer)
+    processing_date = Column(String)
+    status = Column(String)
+    tags = Column(JSON, default=list)
+    source = Column(String, default="backend")
+
+class SensorData(Base):
+    __tablename__ = "sensor_data"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, index=True)
+    time = Column(String)
+    NRG_40C_Anem = Column(Float)
+    NRG_200M_Vane = Column(Float)
+    NRG_T60_Temp = Column(Float)
+    NRG_RH5X_Humi = Column(Float)
+    NRG_BP60_Baro = Column(Float)
+    Rain_Gauge = Column(Float)
+    NRG_PVT1_PV_Temp = Column(Float)
+    PSM_c_Si_Isc_Soil = Column(Float)
+    PSM_c_Si_Isc_Clean = Column(Float)
+    Average_12V_Battery = Column(Float)
+    file_source = Column(String)
+
+# Create tables
+def create_tables():
+    Base.metadata.create_all(bind=engine)
+
+# Database dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

@@ -1,22 +1,47 @@
 services:
-  # FastAPI Backend Service (Minimal config for free tier)
+  # PostgreSQL Database Service
+  - type: pserv
+    name: nrg-datasense-db
+    env: postgresql
+    plan: free
+    ipAllowList: []
+    maxConnections: 5
+
+  # FastAPI Backend Service
   - type: web
     name: nrg-datasense-backend
     env: python
+    plan: free
     buildCommand: cd backend && pip install -r requirements.txt
     startCommand: cd backend && python run.py
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
       - key: PORT
         value: 5000
+      - key: MONITOR_INTERVAL
+        value: "30"
+      - key: MAX_FILES_PER_BATCH
+        value: "10"
+      - key: CORS_ORIGINS
+        value: "https://nrg-datasense-frontend.onrender.com,https://nrg-datasense.onrender.com,http://localhost:3000"
+      - key: DATABASE_URL
+        fromService:
+          name: nrg-datasense-db
+          type: pserv
+          property: connectionString
     autoDeploy: true
 
-  # React Frontend Service (Minimal config for free tier)
+  # React Frontend Service
   - type: web
     name: nrg-datasense-frontend
     env: static
+    plan: free
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
     envVars:
       - key: REACT_APP_API_URL
         value: "https://nrg-datasense-backend.onrender.com"
+      - key: REACT_APP_ENVIRONMENT
+        value: "production"
     autoDeploy: true 

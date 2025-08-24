@@ -11,11 +11,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, UploadFile, File, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uvicorn
+from sqlalchemy.orm import Session
+
+# Import database
+from database import get_db, create_tables, FileMetadata, SensorData
 
 # Import NRG library
 try:
@@ -199,35 +203,44 @@ def save_data(data: List[Dict]):
     except Exception as e:
         logger.error(f"Error saving data: {e}")
 
-def save_file_metadata(metadata: Dict):
-    """Save file metadata with timestamps"""
+def save_file_metadata(metadata: Dict, db: Session):
+    """Save file metadata with timestamps to database"""
     try:
-        metadata_file = "file_metadata.json"
-        existing_metadata = []
-        
-        if os.path.exists(metadata_file):
-            with open(metadata_file, 'r') as f:
-                existing_metadata = json.load(f)
-        
-        # Add new metadata
-        existing_metadata.append(metadata)
-        
-        # Save updated metadata
-        with open(metadata_file, 'w') as f:
-            json.dump(existing_metadata, f, indent=2)
-        
-        logger.info(f"File metadata saved: {metadata['filename']}")
+        db_metadata = FileMetadata(
+            filename=metadata["filename"],
+            timestamp=datetime.fromisoformat(metadata["timestamp"]),
+            records_added=metadata["records_added"],
+            file_size=metadata["file_size"],
+            processing_date=metadata["processing_date"],
+            status=metadata["status"],
+            tags=metadata.get("tags", []),
+            source=metadata.get("source", "backend")
+        )
+        db.add(db_metadata)
+        db.commit()
+        logger.info(f"File metadata saved to database: {metadata['filename']}")
     except Exception as e:
         logger.error(f"Error saving file metadata: {e}")
+        db.rollback()
 
-def get_file_metadata() -> List[Dict]:
-    """Get all file metadata"""
+def get_file_metadata(db: Session) -> List[Dict]:
+    """Get all file metadata from database"""
     try:
-        metadata_file = "file_metadata.json"
-        if os.path.exists(metadata_file):
-            with open(metadata_file, 'r') as f:
-                return json.load(f)
-        return []
+        db_metadata = db.query(FileMetadata).order_by(FileMetadata.timestamp.desc()).all()
+        return [
+            {
+                "id": item.id,
+                "filename": item.filename,
+                "timestamp": item.timestamp.isoformat(),
+                "records_added": item.records_added,
+                "file_size": item.file_size,
+                "processing_date": item.processing_date,
+                "status": item.status,
+                "tags": item.tags,
+                "source": item.source
+            }
+            for item in db_metadata
+        ]
     except Exception as e:
         logger.error(f"Error loading file metadata: {e}")
         return []
@@ -263,7 +276,7 @@ async def health_check():
     }
 
 @app.post("/api/process-rld")
-async def process_rld_file(file: UploadFile = File(...)):
+async def process_rld_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """Process uploaded RLD file"""
     try:
         # Save uploaded file
@@ -299,8 +312,8 @@ async def process_rld_file(file: UploadFile = File(...)):
             "status": "processed"
         }
         
-        # Save file metadata to database or file
-        save_file_metadata(file_metadata)
+        # Save file metadata to database
+        save_file_metadata(file_metadata, db)
         
         # Broadcast to WebSocket clients
         await broadcast_to_websockets({
@@ -334,10 +347,10 @@ async def get_data():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/files")
-async def get_files():
+async def get_files(db: Session = Depends(get_db)):
     """Get all file metadata with timestamps"""
     try:
-        metadata = get_file_metadata()
+        metadata = get_file_metadata(db)
         return {
             "files": metadata,
             "count": len(metadata),
@@ -396,6 +409,9 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         websocket_connections.remove(websocket)
         logger.info("WebSocket client disconnected")
+
+# Initialize database tables
+create_tables()
 
 # Load initial data
 processed_data = load_data()
