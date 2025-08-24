@@ -45,5 +45,4 @@ services:
     name: nrg-datasense-db
     env: postgresql
     plan: free
-    ipAllowList: []
     autoDeploy: true 
