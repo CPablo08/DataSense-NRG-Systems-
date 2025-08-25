@@ -1608,7 +1608,6 @@ const App = () => {
 
   // Apply theme changes
   useEffect(() => {
-    setCurrentTheme(settings.theme);
     document.body.style.backgroundColor = settings.theme === 'light' ? '#ffffff' : '#0d1117';
     document.body.style.color = settings.theme === 'light' ? '#000000' : '#ffffff';
   }, [settings.theme]);
@@ -1703,7 +1702,7 @@ const App = () => {
   // Add log entry
   const addLogEntry = (message, type = 'info') => {
     const timestamp = new Date().toLocaleTimeString();
-    setProcessingLog(prev => [...prev, { timestamp, message, type }]);
+    console.log(`[${timestamp}] ${type.toUpperCase()}: ${message}`);
   };
 
   // Initialize with no data
@@ -2154,7 +2153,6 @@ const App = () => {
     setSummary(libraryFile.summary);
     setHasData(true);
     setTimeIndex(0);
-    setSelectedLibraryFile(libraryFile);
     addLogEntry(`${t('loadedLibraryFile')}: ${libraryFile.name}`, 'success');
   };
 
