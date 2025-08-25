@@ -1509,7 +1509,7 @@ const App = () => {
 
   // Upload modal state
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [uploadMode, setUploadMode] = useState('txt'); // 'txt' or 'rld'
   const [uploadStatus, setUploadStatus] = useState({ loading: false, message: '', error: false });
 
@@ -2377,37 +2377,59 @@ const App = () => {
 
   // File upload functions
   const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setUploadedFile(file);
+    const files = Array.from(event.target.files);
+    if (files.length > 0) {
+      // Limit to 10 files
+      const limitedFiles = files.slice(0, 10);
+      setUploadedFiles(limitedFiles);
       setShowUploadModal(true);
     }
   };
 
-  const processUploadedFile = async () => {
-    if (!uploadedFile) return;
+  const processUploadedFiles = async () => {
+    if (uploadedFiles.length === 0) return;
 
     setUploadStatus({ loading: true, message: '', error: false });
 
     try {
-      let result;
-      
-      if (uploadMode === 'txt') {
-        result = await apiService.processTxtFile(uploadedFile);
-      } else {
-        result = await apiService.convertRldToTxt(uploadedFile);
+      let processedCount = 0;
+      let errorCount = 0;
+      const errors = [];
+
+      for (const file of uploadedFiles) {
+        try {
+          let result;
+          
+          if (uploadMode === 'txt') {
+            result = await apiService.processTxtFile(file);
+          } else {
+            result = await apiService.convertRldToTxt(file);
+          }
+          
+          processedCount++;
+        } catch (error) {
+          errorCount++;
+          errors.push(`${file.name}: ${error.message}`);
+        }
+      }
+
+      let message = `Processed ${processedCount} files successfully`;
+      if (errorCount > 0) {
+        message += `. ${errorCount} files failed: ${errors.join(', ')}`;
       }
 
       setUploadStatus({ 
         loading: false, 
-        message: result.message || 'File processed successfully', 
-        error: false 
+        message: message, 
+        error: errorCount > 0 
       });
 
       // Refresh data after successful upload
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+      if (processedCount > 0) {
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }
 
     } catch (error) {
       setUploadStatus({ 
@@ -2420,7 +2442,7 @@ const App = () => {
 
   const closeUploadModal = () => {
     setShowUploadModal(false);
-    setUploadedFile(null);
+    setUploadedFiles([]);
     setUploadStatus({ loading: false, message: '', error: false });
   };
 
@@ -2627,10 +2649,11 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 <InteractiveControls>
                   <UploadButton>
                     <FiUpload />
-                    Upload File
+                    Upload Files (Max 10)
                     <input
                       type="file"
                       accept=".txt,.rld"
+                      multiple
                       onChange={handleFileUpload}
                     />
                   </UploadButton>
@@ -3544,8 +3567,28 @@ const generatePDFReport = (data, timeRange, fileName) => {
             <ModalContent>
               <div style={{ marginBottom: '15px' }}>
                 <label style={{ display: 'block', marginBottom: '5px', color: '#fff' }}>
-                  File: {uploadedFile?.name}
+                  Files ({uploadedFiles.length} selected):
                 </label>
+                <div style={{ 
+                  maxHeight: '150px', 
+                  overflowY: 'auto', 
+                  background: '#0d1117', 
+                  border: '1px solid #30363d', 
+                  borderRadius: '4px', 
+                  padding: '10px',
+                  marginBottom: '15px'
+                }}>
+                  {uploadedFiles.map((file, index) => (
+                    <div key={index} style={{ 
+                      padding: '5px 0', 
+                      borderBottom: index < uploadedFiles.length - 1 ? '1px solid #30363d' : 'none',
+                      fontSize: '12px',
+                      color: '#8b949e'
+                    }}>
+                      {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                    </div>
+                  ))}
+                </div>
                 <div style={{ marginBottom: '15px' }}>
                   <label style={{ display: 'block', marginBottom: '5px', color: '#fff' }}>
                     Processing Mode:
@@ -3562,7 +3605,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                       color: '#fff'
                     }}
                   >
-                    <option value="txt">Process TXT file directly</option>
+                    <option value="txt">Process TXT files directly</option>
                     <option value="rld">Convert RLD to TXT</option>
                   </select>
                 </div>
@@ -3591,11 +3634,11 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 Cancel
               </ControlButton>
               <ControlButton
-                onClick={processUploadedFile}
-                disabled={!uploadedFile || uploadStatus.loading}
+                onClick={processUploadedFiles}
+                disabled={uploadedFiles.length === 0 || uploadStatus.loading}
                 style={{ background: uploadStatus.loading ? '#30363d' : '#1f6feb' }}
               >
-                {uploadStatus.loading ? 'Processing...' : 'Process File'}
+                {uploadStatus.loading ? 'Processing...' : `Process ${uploadedFiles.length} Files`}
               </ControlButton>
             </ModalActions>
           </UploadModal>
