@@ -367,6 +367,10 @@ const UploadModal = styled(motion.div)`
   padding: 20px;
   z-index: 1000;
   min-width: 400px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 `;
 
 const ModalOverlay = styled(motion.div)`
