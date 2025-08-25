@@ -217,6 +217,52 @@ class ApiService {
       throw error;
     }
   }
+
+  // Process TXT file directly
+  async processTxtFile(file) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${this.baseURL}/api/process-txt`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'TXT processing failed');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('TXT processing failed:', error);
+      throw error;
+    }
+  }
+
+  // Convert RLD to TXT without processing
+  async convertRldToTxt(file) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${this.baseURL}/api/convert-rld-to-txt`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'RLD to TXT conversion failed');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('RLD to TXT conversion failed:', error);
+      throw error;
+    }
+  }
 }
 
 // Create singleton instance

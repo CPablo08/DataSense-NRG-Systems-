@@ -332,6 +332,93 @@ async def process_rld_file(file: UploadFile = File(...), db: Session = Depends(g
         logger.error(f"Error processing RLD file: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/process-txt")
+async def process_txt_file_upload(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Process uploaded TXT file directly"""
+    try:
+        # Check if file is TXT
+        if not file.filename.lower().endswith('.txt'):
+            raise HTTPException(status_code=400, detail="File must be a TXT file")
+        
+        # Save uploaded file
+        upload_path = f"uploads/{file.filename}"
+        with open(upload_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Process TXT file
+        new_data = process_txt_file(upload_path)
+        if not new_data:
+            raise HTTPException(status_code=400, detail="No data extracted from file")
+        
+        # Add to global data
+        global processed_data
+        processed_data.extend(new_data)
+        
+        # Save to file
+        save_data(processed_data)
+        
+        # Create file metadata with timestamp
+        file_metadata = {
+            "filename": file.filename,
+            "timestamp": datetime.now().isoformat(),
+            "records_added": len(new_data),
+            "file_size": len(content),
+            "processing_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "status": "processed",
+            "source": "txt_upload"
+        }
+        
+        # Save file metadata to database
+        save_file_metadata(file_metadata, db)
+        
+        # Broadcast to WebSocket clients
+        await broadcast_to_websockets({
+            "type": "new_data",
+            "data": new_data,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        return {
+            "message": "TXT file processed successfully",
+            "records_added": len(new_data),
+            "filename": file.filename
+        }
+        
+    except Exception as e:
+        logger.error(f"Error processing TXT file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/convert-rld-to-txt")
+async def convert_rld_to_txt_endpoint(file: UploadFile = File(...)):
+    """Convert RLD file to TXT without processing data"""
+    try:
+        # Save uploaded file
+        upload_path = f"uploads/{file.filename}"
+        with open(upload_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Convert RLD to TXT
+        txt_file = convert_rld_to_txt(upload_path)
+        if not txt_file:
+            raise HTTPException(status_code=400, detail="Failed to convert RLD file")
+        
+        # Read the converted TXT file
+        with open(txt_file, 'r') as f:
+            txt_content = f.read()
+        
+        return {
+            "message": "RLD file converted to TXT successfully",
+            "txt_filename": os.path.basename(txt_file),
+            "txt_content": txt_content,
+            "original_filename": file.filename
+        }
+        
+    except Exception as e:
+        logger.error(f"Error converting RLD to TXT: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/data")
 async def get_data():
     """Get all processed data"""

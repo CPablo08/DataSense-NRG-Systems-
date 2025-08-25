@@ -9,7 +9,7 @@ import {
   FiCloud, FiSettings, FiBarChart2, FiPlay,
   FiThermometer, FiDroplet, FiWind, FiSun, FiBattery, FiAlertCircle, FiDatabase,
   FiTrendingUp, FiActivity, FiFolder, FiFile, FiClock, FiRotateCcw,
-  FiGlobe, FiDownload, FiTrash2, FiSearch, FiX
+  FiGlobe, FiDownload, FiTrash2, FiSearch, FiX, FiUpload
 } from 'react-icons/fi';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -331,6 +331,72 @@ const ControlButton = styled.button`
   &:hover {
     background: ${props => props.active ? '#1158c7' : '#30363d'};
   }
+`;
+
+const UploadButton = styled.label`
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: #30363d;
+    border-color: #1f6feb;
+  }
+
+  input[type="file"] {
+    display: none;
+  }
+`;
+
+const UploadModal = styled(motion.div)`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 20px;
+  z-index: 1000;
+  min-width: 400px;
+`;
+
+const ModalOverlay = styled(motion.div)`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 999;
+`;
+
+const ModalTitle = styled.h3`
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const ModalContent = styled.div`
+  margin-bottom: 15px;
+`;
+
+const ModalActions = styled.div`
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
 `;
 
 
@@ -1441,6 +1507,12 @@ const App = () => {
   // Settings save status
   const [settingsSaveStatus, setSettingsSaveStatus] = useState({ type: '', message: '' });
 
+  // Upload modal state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [uploadMode, setUploadMode] = useState('txt'); // 'txt' or 'rld'
+  const [uploadStatus, setUploadStatus] = useState({ loading: false, message: '', error: false });
+
 
   // Check backend status
   useEffect(() => {
@@ -1520,34 +1592,34 @@ const App = () => {
   useEffect(() => {
     const loadFiles = async () => {
       // Load local files
-      const savedFiles = localStorage.getItem('datasenseLibraryFiles');
+    const savedFiles = localStorage.getItem('datasenseLibraryFiles');
       let localFiles = [];
       
-      if (savedFiles) {
-        const files = JSON.parse(savedFiles);
+    if (savedFiles) {
+      const files = JSON.parse(savedFiles);
+      
+      // Clean old data (older than 1 year)
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      
+      const currentTime = new Date();
+      const cleanedFiles = files.filter(file => {
+        const fileDate = new Date(file.date);
+        const isOlderThanOneYear = fileDate < oneYearAgo;
         
-        // Clean old data (older than 1 year)
-        const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-        
-        const currentTime = new Date();
-        const cleanedFiles = files.filter(file => {
-          const fileDate = new Date(file.date);
-          const isOlderThanOneYear = fileDate < oneYearAgo;
-          
-          if (isOlderThanOneYear) {
-            console.log(`Auto-deleting old file: ${file.name} (${fileDate.toLocaleDateString()})`);
-          }
-          
-          return !isOlderThanOneYear;
-        });
-        
-        // Update localStorage with cleaned data
-        if (cleanedFiles.length !== files.length) {
-          localStorage.setItem('datasenseLibraryFiles', JSON.stringify(cleanedFiles));
-          console.log(`Auto-cleanup: Removed ${files.length - cleanedFiles.length} old files`);
+        if (isOlderThanOneYear) {
+          console.log(`Auto-deleting old file: ${file.name} (${fileDate.toLocaleDateString()})`);
         }
         
+        return !isOlderThanOneYear;
+      });
+      
+      // Update localStorage with cleaned data
+      if (cleanedFiles.length !== files.length) {
+        localStorage.setItem('datasenseLibraryFiles', JSON.stringify(cleanedFiles));
+        console.log(`Auto-cleanup: Removed ${files.length - cleanedFiles.length} old files`);
+      }
+      
         localFiles = cleanedFiles;
       }
       
@@ -1571,13 +1643,13 @@ const App = () => {
         setLibraryFiles(allFiles);
         
         // Extract all unique tags
-        const allTags = new Set();
+      const allTags = new Set();
         allFiles.forEach(file => {
-          if (file.tags && Array.isArray(file.tags)) {
-            file.tags.forEach(tag => allTags.add(tag));
-          }
-        });
-        setAvailableTags(Array.from(allTags));
+        if (file.tags && Array.isArray(file.tags)) {
+          file.tags.forEach(tag => allTags.add(tag));
+        }
+      });
+      setAvailableTags(Array.from(allTags));
         
       } catch (error) {
         console.log('Backend not available, using local files only');
@@ -2303,7 +2375,54 @@ const App = () => {
     addLogEntry('Closed enlarged graph', 'info');
   };
 
+  // File upload functions
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setUploadedFile(file);
+      setShowUploadModal(true);
+    }
+  };
 
+  const processUploadedFile = async () => {
+    if (!uploadedFile) return;
+
+    setUploadStatus({ loading: true, message: '', error: false });
+
+    try {
+      let result;
+      
+      if (uploadMode === 'txt') {
+        result = await apiService.processTxtFile(uploadedFile);
+      } else {
+        result = await apiService.convertRldToTxt(uploadedFile);
+      }
+
+      setUploadStatus({ 
+        loading: false, 
+        message: result.message || 'File processed successfully', 
+        error: false 
+      });
+
+      // Refresh data after successful upload
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+
+    } catch (error) {
+      setUploadStatus({ 
+        loading: false, 
+        message: error.message || 'Upload failed', 
+        error: true 
+      });
+    }
+  };
+
+  const closeUploadModal = () => {
+    setShowUploadModal(false);
+    setUploadedFile(null);
+    setUploadStatus({ loading: false, message: '', error: false });
+  };
 
 // PDF Report Generation
 const generatePDFReport = (data, timeRange, fileName) => {
@@ -2506,6 +2625,16 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 </div>
                 
                 <InteractiveControls>
+                  <UploadButton>
+                    <FiUpload />
+                    Upload File
+                    <input
+                      type="file"
+                      accept=".txt,.rld"
+                      onChange={handleFileUpload}
+                    />
+                  </UploadButton>
+                  
                   <NavButton>
                     <StatusIndicator status={backendStatus}>
                       <StatusDot status={backendStatus} />
@@ -3391,6 +3520,87 @@ const generatePDFReport = (data, timeRange, fileName) => {
 
 
 
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <>
+          <ModalOverlay
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeUploadModal}
+          />
+          <UploadModal
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          >
+            <ModalTitle>
+              <FiUpload />
+              Upload File
+            </ModalTitle>
+            
+            <ModalContent>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', color: '#fff' }}>
+                  File: {uploadedFile?.name}
+                </label>
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', color: '#fff' }}>
+                    Processing Mode:
+                  </label>
+                  <select
+                    value={uploadMode}
+                    onChange={(e) => setUploadMode(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      background: '#21262d',
+                      border: '1px solid #30363d',
+                      borderRadius: '4px',
+                      color: '#fff'
+                    }}
+                  >
+                    <option value="txt">Process TXT file directly</option>
+                    <option value="rld">Convert RLD to TXT</option>
+                  </select>
+                </div>
+                
+                {uploadStatus.message && (
+                  <div style={{
+                    padding: '10px',
+                    borderRadius: '4px',
+                    backgroundColor: uploadStatus.error ? '#21262d' : '#0d1117',
+                    border: `1px solid ${uploadStatus.error ? '#f85149' : '#1f6feb'}`,
+                    color: uploadStatus.error ? '#f85149' : '#1f6feb',
+                    marginBottom: '15px'
+                  }}>
+                    {uploadStatus.message}
+                  </div>
+                )}
+              </div>
+            </ModalContent>
+            
+            <ModalActions>
+              <ControlButton
+                onClick={closeUploadModal}
+                disabled={uploadStatus.loading}
+                style={{ background: '#30363d' }}
+              >
+                Cancel
+              </ControlButton>
+              <ControlButton
+                onClick={processUploadedFile}
+                disabled={!uploadedFile || uploadStatus.loading}
+                style={{ background: uploadStatus.loading ? '#30363d' : '#1f6feb' }}
+              >
+                {uploadStatus.loading ? 'Processing...' : 'Process File'}
+              </ControlButton>
+            </ModalActions>
+          </UploadModal>
+        </>
+      )}
 
       {/* Settings Panel */}
       {showSettings && (
