@@ -2030,32 +2030,6 @@ const App = () => {
     addLogEntry(`Successfully parsed ${validRecords} valid records from ${fileName}`, 'success');
     return fileData;
   };
-
-
-                  PSM_c_Si_Isc_Soil: numericParts[7] || 0,
-                  PSM_c_Si_Isc_Clean: numericParts[8] || 0,
-                  Average_12V_Battery: numericParts[9] || 0
-                };
-                
-                // Only add if we have some non-zero values
-                const hasData = Object.values(dataPoint).some(val => 
-                  typeof val === 'number' && val !== 0 && !isNaN(val)
-                );
-                
-                if (hasData) {
-                  fileData.push(dataPoint);
-                  validRecords++;
-                }
-              }
-            } catch (error) {
-              addLogEntry(`${t('errorParsingLine')} ${j + 1} ${t('in')} ${file.name}: ${error.message}`, 'error');
-            }
-          }
-          
-          addLogEntry(`${t('successfullyParsedValidRecords')} ${file.name}: ${validRecords}`, 'success');
-          unifiedData = [...unifiedData, ...fileData];
-        }
-      }
       
       // Convert to CSV format
       addLogEntry(t('convertingUnifiedDataToCsv'), 'info');
@@ -2073,7 +2047,7 @@ const App = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-              a.download = 'unified_data.csv';
+      a.download = 'unified_data.csv';
       a.click();
       URL.revokeObjectURL(url);
       
