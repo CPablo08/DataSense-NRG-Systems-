@@ -2697,7 +2697,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                     <FiDatabase />
                   </SummaryIcon>
                   <SummaryContent>
-                                            <SummaryValue>{hasData ? summary.totalRecords : t('noData')}</SummaryValue>
+                                            <SummaryValue>{hasData && summary ? summary.totalRecords : t('noData')}</SummaryValue>
                     <SummaryLabel>{t('totalRecords')}</SummaryLabel>
                   </SummaryContent>
                 </SummaryCard>
@@ -2707,7 +2707,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                     <FiActivity />
                   </SummaryIcon>
                   <SummaryContent>
-                                            <SummaryValue>{hasData ? summary.sensorCount : t('noData')}</SummaryValue>
+                                            <SummaryValue>{hasData && summary ? summary.sensorCount : t('noData')}</SummaryValue>
                     <SummaryLabel>{t('sensorCount')}</SummaryLabel>
                   </SummaryContent>
                 </SummaryCard>
@@ -2717,7 +2717,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                     <FiFile />
                   </SummaryIcon>
                   <SummaryContent>
-                                            <SummaryValue>{hasData ? summary.fileCount : t('noData')}</SummaryValue>
+                                            <SummaryValue>{hasData && summary ? summary.fileCount : t('noData')}</SummaryValue>
                     <SummaryLabel>{t('fileCount')}</SummaryLabel>
                   </SummaryContent>
                 </SummaryCard>
@@ -2727,7 +2727,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                     <FiClock />
                   </SummaryIcon>
                   <SummaryContent>
-                                            <SummaryValue>{hasData ? summary.lastUpdate : t('noData')}</SummaryValue>
+                                            <SummaryValue>{hasData && summary ? summary.lastUpdate : t('noData')}</SummaryValue>
                     <SummaryLabel>{t('lastUpdate')}</SummaryLabel>
                   </SummaryContent>
                 </SummaryCard>
@@ -3070,11 +3070,11 @@ const generatePDFReport = (data, timeRange, fileName) => {
               {/* Library Statistics */}
               <LibraryStats>
                 <LibraryStatCard>
-                  <LibraryStatValue>{getStorageStats().totalFiles}</LibraryStatValue>
+                  <LibraryStatValue>{getStorageStats()?.totalFiles || '0'}</LibraryStatValue>
                   <LibraryStatLabel>Total Files</LibraryStatLabel>
                 </LibraryStatCard>
                 <LibraryStatCard>
-                  <LibraryStatValue>{getStorageStats().totalRecords.toLocaleString()}</LibraryStatValue>
+                  <LibraryStatValue>{getStorageStats()?.totalRecords?.toLocaleString() || '0'}</LibraryStatValue>
                   <LibraryStatLabel>Total Records</LibraryStatLabel>
                 </LibraryStatCard>
                 <LibraryStatCard>
@@ -3082,7 +3082,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   <LibraryStatLabel>Filtered Results</LibraryStatLabel>
                 </LibraryStatCard>
                 <LibraryStatCard>
-                  <LibraryStatValue>{getStorageStats().oldFiles}</LibraryStatValue>
+                  <LibraryStatValue>{getStorageStats()?.oldFiles || '0'}</LibraryStatValue>
                   <LibraryStatLabel>Old Files (1+ year)</LibraryStatLabel>
                 </LibraryStatCard>
               </LibraryStats>
