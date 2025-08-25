@@ -125,14 +125,15 @@ def process_txt_file(txt_file: str) -> List[Dict]:
         lines = content.split('\n')
         processed_data = []
         
-        # Find data section
+        # Find data section - look for lines that start with date format (YYYY-MM-DD HH:MM:SS)
         data_start = -1
         headers = []
         
         for i, line in enumerate(lines):
-            if line.strip().startswith('Timestamp'):
-                data_start = i + 1
-                headers = line.split('\t')
+            line = line.strip()
+            # Check if line starts with a date format (YYYY-MM-DD HH:MM:SS)
+            if line and len(line) >= 19 and line[4] == '-' and line[7] == '-' and line[10] == ' ' and line[13] == ':' and line[16] == ':':
+                data_start = i
                 break
         
         if data_start == -1:
@@ -148,27 +149,29 @@ def process_txt_file(txt_file: str) -> List[Dict]:
             try:
                 # Parse tab-separated values
                 values = line.split('\t')
-                if len(values) < 10:
+                if len(values) < 5:  # Need at least timestamp and a few sensor values
                     continue
                 
                 # Extract timestamp
                 timestamp = values[0] if values[0] else datetime.now().isoformat()
                 
-                # Create data record
+                # Create data record - map values based on the actual file structure
+                # Based on the file content, the order appears to be:
+                # timestamp, wind_speed, wind_direction, temp, humidity, pressure, etc.
                 record = {
                     "time": timestamp,
                     "timestamp": timestamp,
                     "filename": os.path.basename(txt_file),
-                    "NRG_40C_Anem": float(values[1]) if len(values) > 1 and values[1] else 0,
-                    "NRG_200M_Vane": float(values[2]) if len(values) > 2 and values[2] else 0,
-                    "NRG_T60_Temp": float(values[3]) if len(values) > 3 and values[3] else 0,
-                    "NRG_RH5X_Humi": float(values[4]) if len(values) > 4 and values[4] else 0,
-                    "NRG_BP60_Baro": float(values[5]) if len(values) > 5 and values[5] else 0,
-                    "Rain_Gauge": float(values[6]) if len(values) > 6 and values[6] else 0,
-                    "NRG_PVT1_PV_Temp": float(values[7]) if len(values) > 7 and values[7] else 0,
-                    "PSM_c_Si_Isc_Soil": float(values[8]) if len(values) > 8 and values[8] else 0,
-                    "PSM_c_Si_Isc_Clean": float(values[9]) if len(values) > 9 and values[9] else 0,
-                    "Average_12V_Battery": float(values[10]) if len(values) > 10 and values[10] else 0
+                    "NRG_40C_Anem": float(values[1]) if len(values) > 1 and values[1].strip() else 0,
+                    "NRG_200M_Vane": float(values[2]) if len(values) > 2 and values[2].strip() else 0,
+                    "NRG_T60_Temp": float(values[3]) if len(values) > 3 and values[3].strip() else 0,
+                    "NRG_RH5X_Humi": float(values[4]) if len(values) > 4 and values[4].strip() else 0,
+                    "NRG_BP60_Baro": float(values[5]) if len(values) > 5 and values[5].strip() else 0,
+                    "Rain_Gauge": float(values[6]) if len(values) > 6 and values[6].strip() else 0,
+                    "NRG_PVT1_PV_Temp": float(values[7]) if len(values) > 7 and values[7].strip() else 0,
+                    "PSM_c_Si_Isc_Soil": float(values[8]) if len(values) > 8 and values[8].strip() else 0,
+                    "PSM_c_Si_Isc_Clean": float(values[9]) if len(values) > 9 and values[9].strip() else 0,
+                    "Average_12V_Battery": float(values[10]) if len(values) > 10 and values[10].strip() else 0
                 }
                 
                 processed_data.append(record)
