@@ -497,6 +497,9 @@ async def websocket_endpoint(websocket: WebSocket):
         websocket_connections.remove(websocket)
         logger.info("WebSocket client disconnected")
 
+# Setup directories
+setup_directories()
+
 # Initialize database tables
 create_tables()
 
