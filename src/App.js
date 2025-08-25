@@ -2649,7 +2649,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 <InteractiveControls>
                   <UploadButton>
                     <FiUpload />
-                    Upload Files (Max 10)
+                    Upload Files
                     <input
                       type="file"
                       accept=".txt,.rld"
