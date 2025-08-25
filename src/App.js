@@ -1465,6 +1465,8 @@ const App = () => {
   const [timeIndex, setTimeIndex] = useState(0);
   const [hasData, setHasData] = useState(false);
   const [libraryFiles, setLibraryFiles] = useState([]);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [selectedFilesToDelete, setSelectedFilesToDelete] = useState([]);
   const [enlargedGraph, setEnlargedGraph] = useState(null);
   const [analysisTimeRange, setAnalysisTimeRange] = useState({ start: 0, end: 0 });
   const [settings, setSettings] = useState({
@@ -2111,7 +2113,7 @@ const App = () => {
   };
 
   const getCurrentSensorValues = () => {
-    if (realTimeData.length === 0 || !hasData) {
+    if (!realTimeData || realTimeData.length === 0 || !hasData) {
       return {
         NRG_40C_Anem: t('noData'),
         NRG_200M_Vane: t('noData'),
@@ -2125,7 +2127,7 @@ const App = () => {
         Average_12V_Battery: t('noData')
       };
     }
-    return realTimeData[timeIndex] || realTimeData[realTimeData.length - 1];
+    return realTimeData[timeIndex] || realTimeData[(realTimeData || []).length - 1];
   };
 
   // Get full dataset for charts (showing complete data with exact timestamps)
@@ -2167,7 +2169,7 @@ const App = () => {
     }
     
     // Get all wind direction readings with timestamps from the dataset
-    const windData = currentData.map(point => ({
+    const windData = (currentData || []).map(point => ({
       direction: point.NRG_200M_Vane,
       timestamp: point.time,
       fullTimestamp: point.timestamp
@@ -2187,7 +2189,7 @@ const App = () => {
     
     // Count wind directions in each range with timestamps
     const directionCounts = directionRanges.map(range => {
-      const matchingData = windData.filter(windPoint => {
+      const matchingData = (windData || []).filter(windPoint => {
         // Handle the special case for North (337.5° - 22.5°)
         if (range.name === 'N') {
           return windPoint.direction >= 337.5 || windPoint.direction < 22.5;
@@ -2195,15 +2197,15 @@ const App = () => {
         return windPoint.direction >= range.min && windPoint.direction < range.max;
       });
       
-      const timestamps = matchingData.map(point => point.timestamp);
+      const timestamps = (matchingData || []).map(point => point.timestamp);
       const count = matchingData.length;
       
       return { 
         direction: range.name, 
         value: count,
-        percentage: ((count / windData.length) * 100).toFixed(1),
+        percentage: ((count / (windData || []).length) * 100).toFixed(1),
         timestamps: timestamps,
-        totalReadings: windData.length
+        totalReadings: (windData || []).length
       };
     });
     
@@ -2240,7 +2242,7 @@ const App = () => {
 
   // File organization functions
   const addTagToFile = (fileId, tag) => {
-    setLibraryFiles(prev => prev.map(file => {
+    setLibraryFiles(prev => (prev || []).map(file => {
       if (file.id === fileId) {
         const updatedTags = file.tags ? [...file.tags, tag] : [tag];
         return { ...file, tags: updatedTags };
@@ -2250,7 +2252,7 @@ const App = () => {
   };
 
   const removeTagFromFile = (fileId, tag) => {
-    setLibraryFiles(prev => prev.map(file => {
+    setLibraryFiles(prev => (prev || []).map(file => {
       if (file.id === fileId) {
         const updatedTags = file.tags ? file.tags.filter(t => t !== tag) : [];
         return { ...file, tags: updatedTags };
@@ -2268,7 +2270,7 @@ const App = () => {
 
 
   // Filter files based on search and tags
-  const filteredLibraryFiles = libraryFiles.filter(file => {
+  const filteredLibraryFiles = (libraryFiles || []).filter(file => {
     const matchesSearch = searchTerm === '' || 
       file.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (file.tags && file.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())));
@@ -2284,16 +2286,16 @@ const App = () => {
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     
-    const oldFiles = libraryFiles.filter(file => {
+    const oldFiles = (libraryFiles || []).filter(file => {
       const fileDate = new Date(file.date);
       return fileDate < oneYearAgo;
     });
     
-    const totalSize = libraryFiles.reduce((sum, file) => sum + (file.records || 0), 0);
-    const oldSize = oldFiles.reduce((sum, file) => sum + (file.records || 0), 0);
+    const totalSize = (libraryFiles || []).reduce((sum, file) => sum + (file.records || 0), 0);
+    const oldSize = (oldFiles || []).reduce((sum, file) => sum + (file.records || 0), 0);
     
     return {
-      totalFiles: libraryFiles.length,
+      totalFiles: (libraryFiles || []).length,
       oldFiles: oldFiles.length,
       totalRecords: totalSize,
       oldRecords: oldSize,
@@ -2303,7 +2305,7 @@ const App = () => {
 
   // Calculate sensor statistics
   const getSensorStats = () => {
-    if (!realTimeData || realTimeData.length === 0) {
+    if (!realTimeData || !Array.isArray(realTimeData) || realTimeData.length === 0) {
       return null;
     }
 
@@ -2315,9 +2317,9 @@ const App = () => {
     const stats = {};
     
     sensors.forEach(sensor => {
-      const values = realTimeData
-        .map(point => point[sensor])
-        .filter(val => val !== undefined && val !== null && !isNaN(val));
+          const values = (realTimeData || [])
+      .map(point => point[sensor])
+      .filter(val => val !== undefined && val !== null && !isNaN(val));
       
       if (values.length > 0) {
         const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
@@ -2439,7 +2441,7 @@ const App = () => {
 
   const performCleanup = () => {
     // Remove selected files from library
-    setLibraryFiles(prev => prev.filter(file => !selectedFilesToDelete.includes(file.id)));
+    setLibraryFiles(prev => (prev || []).filter(file => !selectedFilesToDelete.includes(file.id)));
     
     // Clear selection
     setSelectedFilesToDelete([]);
@@ -3685,7 +3687,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   padding: '10px',
                   marginBottom: '15px'
                 }}>
-                  {libraryFiles.map((file) => (
+                  {(libraryFiles || []).map((file) => (
                     <div key={file.id} style={{ 
                       padding: '10px', 
                       borderBottom: '1px solid #30363d',
