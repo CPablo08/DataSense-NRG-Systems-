@@ -1515,13 +1515,11 @@ const App = () => {
 
   // Upload modal state
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [uploadMode, setUploadMode] = useState('txt'); // 'txt' or 'rld'
   const [uploadStatus, setUploadStatus] = useState({ loading: false, message: '', error: false });
 
   // Cleanup modal state
   const [showCleanupModal, setShowCleanupModal] = useState(false);
-  const [selectedFilesToDelete, setSelectedFilesToDelete] = useState([]);
 
 
   // Check backend status
