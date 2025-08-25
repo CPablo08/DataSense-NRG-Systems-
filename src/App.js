@@ -9,7 +9,7 @@ import {
   FiCloud, FiSettings, FiBarChart2, FiPlay,
   FiThermometer, FiDroplet, FiWind, FiSun, FiBattery, FiAlertCircle, FiDatabase,
   FiTrendingUp, FiActivity, FiFolder, FiFile, FiClock, FiRotateCcw,
-  FiGlobe, FiDownload, FiTrash2, FiSearch, FiX, FiUpload
+  FiGlobe, FiDownload, FiSearch, FiX, FiUpload
 } from 'react-icons/fi';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -1517,6 +1517,10 @@ const App = () => {
   const [uploadMode, setUploadMode] = useState('txt'); // 'txt' or 'rld'
   const [uploadStatus, setUploadStatus] = useState({ loading: false, message: '', error: false });
 
+  // Cleanup modal state
+  const [showCleanupModal, setShowCleanupModal] = useState(false);
+  const [selectedFilesToDelete, setSelectedFilesToDelete] = useState([]);
+
 
   // Check backend status
   useEffect(() => {
@@ -2232,10 +2236,7 @@ const App = () => {
     addLogEntry(`${t('loadedLibraryFile')}: ${libraryFile.name}`, 'success');
   };
 
-  const deleteLibraryFile = (fileId) => {
-    setLibraryFiles(prev => prev.filter(file => file.id !== fileId));
-    addLogEntry(t('libraryFileDeleted'), 'info');
-  };
+
 
   // File organization functions
   const addTagToFile = (fileId, tag) => {
@@ -2264,30 +2265,7 @@ const App = () => {
     }
   };
 
-  // Manual cleanup function for testing
-  const triggerCleanup = () => {
-    const savedFiles = localStorage.getItem('datasenseLibraryFiles');
-    if (savedFiles) {
-      const files = JSON.parse(savedFiles);
-      
-      // Clean old data (older than 1 year)
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-      
-      const cleanedFiles = files.filter(file => {
-        const fileDate = new Date(file.date);
-        return fileDate >= oneYearAgo;
-      });
-      
-      if (cleanedFiles.length !== files.length) {
-        localStorage.setItem('datasenseLibraryFiles', JSON.stringify(cleanedFiles));
-        setLibraryFiles(cleanedFiles);
-        addLogEntry(`${t('autoCleanupRemovedFiles')}: ${files.length - cleanedFiles.length}`, 'info');
-      } else {
-        addLogEntry(t('noOldFilesToCleanUp'), 'info');
-      }
-    }
-  };
+
 
   // Filter files based on search and tags
   const filteredLibraryFiles = libraryFiles.filter(file => {
@@ -2448,6 +2426,31 @@ const App = () => {
     setShowUploadModal(false);
     setUploadedFiles([]);
     setUploadStatus({ loading: false, message: '', error: false });
+  };
+
+  // Cleanup functions
+  const handleFileSelectionForCleanup = (fileId) => {
+    setSelectedFilesToDelete(prev => 
+      prev.includes(fileId) 
+        ? prev.filter(id => id !== fileId)
+        : [...prev, fileId]
+    );
+  };
+
+  const performCleanup = () => {
+    // Remove selected files from library
+    setLibraryFiles(prev => prev.filter(file => !selectedFilesToDelete.includes(file.id)));
+    
+    // Clear selection
+    setSelectedFilesToDelete([]);
+    setShowCleanupModal(false);
+    
+    addLogEntry(`Cleaned up ${selectedFilesToDelete.length} files`, 'info');
+  };
+
+  const closeCleanupModal = () => {
+    setShowCleanupModal(false);
+    setSelectedFilesToDelete([]);
   };
 
 // PDF Report Generation
@@ -3022,10 +3025,10 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 
                 <InteractiveControls>
                   <ControlButton 
-                    onClick={triggerCleanup}
+                    onClick={() => setShowCleanupModal(true)}
                     title="Clean up old files"
                   >
-                    <FiTrash2 />
+                    <FiX />
                     Cleanup
                   </ControlButton>
                 </InteractiveControls>
@@ -3120,11 +3123,10 @@ const generatePDFReport = (data, timeRange, fileName) => {
                             <FiPlay />
                           </ActionButton>
                           <ActionButton
-                            onClick={() => deleteLibraryFile(file.id)}
-                            title="Delete this file"
-                            danger
+                            onClick={() => loadLibraryFile(file)}
+                            title="Re-visualize this file"
                           >
-                            <FiTrash2 />
+                            <FiBarChart2 />
                           </ActionButton>
                         </FileActions>
                       </LibraryCardHeader>
@@ -3643,6 +3645,98 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 style={{ background: uploadStatus.loading ? '#30363d' : '#1f6feb' }}
               >
                 {uploadStatus.loading ? 'Processing...' : `Process ${uploadedFiles.length} Files`}
+              </ControlButton>
+            </ModalActions>
+          </UploadModal>
+        </>
+      )}
+
+      {/* Cleanup Modal */}
+      {showCleanupModal && (
+        <>
+          <ModalOverlay
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeCleanupModal}
+          />
+          <UploadModal
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          >
+            <ModalTitle>
+              <FiX />
+              Cleanup Files
+            </ModalTitle>
+            
+            <ModalContent>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '10px', color: '#fff' }}>
+                  Select files to delete:
+                </label>
+                <div style={{ 
+                  maxHeight: '300px', 
+                  overflowY: 'auto', 
+                  background: '#0d1117', 
+                  border: '1px solid #30363d', 
+                  borderRadius: '4px', 
+                  padding: '10px',
+                  marginBottom: '15px'
+                }}>
+                  {libraryFiles.map((file) => (
+                    <div key={file.id} style={{ 
+                      padding: '10px', 
+                      borderBottom: '1px solid #30363d',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedFilesToDelete.includes(file.id)}
+                        onChange={() => handleFileSelectionForCleanup(file.id)}
+                        style={{ margin: 0 }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ color: '#fff', fontSize: '14px', fontWeight: 'bold' }}>
+                          {file.name}
+                        </div>
+                        <div style={{ color: '#8b949e', fontSize: '12px' }}>
+                          {file.records} records • {file.processingDate || new Date(file.date).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div style={{
+                  padding: '10px',
+                  borderRadius: '4px',
+                  backgroundColor: '#0d1117',
+                  border: '1px solid #30363d',
+                  color: '#8b949e',
+                  fontSize: '12px'
+                }}>
+                  Selected: {selectedFilesToDelete.length} files
+                </div>
+              </div>
+            </ModalContent>
+            
+            <ModalActions>
+              <ControlButton
+                onClick={closeCleanupModal}
+                style={{ background: '#30363d' }}
+              >
+                Cancel
+              </ControlButton>
+              <ControlButton
+                onClick={performCleanup}
+                disabled={selectedFilesToDelete.length === 0}
+                style={{ background: selectedFilesToDelete.length === 0 ? '#30363d' : '#f85149' }}
+              >
+                Delete {selectedFilesToDelete.length} Files
               </ControlButton>
             </ModalActions>
           </UploadModal>
