@@ -786,7 +786,7 @@ const StatCard = styled.div`
   text-align: center;
 `;
 
-const StatValue = styled.div`
+const SummaryStatValue = styled.div`
   font-size: 18px;
   font-weight: bold;
   color: #fff;
@@ -3955,27 +3955,27 @@ const generatePDFReport = (data, timeRange, fileName) => {
             <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
               <GraphStats style={{ marginBottom: '20px' }}>
                 <StatCard>
-                  <StatValue>{realTimeData.length.toLocaleString()}</StatValue>
+                                      <SummaryStatValue>{realTimeData.length.toLocaleString()}</SummaryStatValue>
                   <StatLabel>Total Data Points</StatLabel>
                 </StatCard>
                 <StatCard>
-                  <StatValue>{realTimeData.length > 0 ? new Date(realTimeData[0].timestamp).toLocaleDateString() : 'N/A'}</StatValue>
+                                      <SummaryStatValue>{realTimeData.length > 0 ? new Date(realTimeData[0].timestamp).toLocaleDateString() : 'N/A'}</SummaryStatValue>
                   <StatLabel>Start Date</StatLabel>
                 </StatCard>
                 <StatCard>
-                  <StatValue>{realTimeData.length > 0 ? new Date(realTimeData[realTimeData.length - 1].timestamp).toLocaleDateString() : 'N/A'}</StatValue>
+                                      <SummaryStatValue>{realTimeData.length > 0 ? new Date(realTimeData[realTimeData.length - 1].timestamp).toLocaleDateString() : 'N/A'}</SummaryStatValue>
                   <StatLabel>End Date</StatLabel>
                 </StatCard>
                 <StatCard>
-                  <StatValue>{realTimeData.length > 0 ? `${Math.round((new Date(realTimeData[realTimeData.length - 1].timestamp) - new Date(realTimeData[0].timestamp)) / (1000 * 60 * 60))}h` : 'N/A'}</StatValue>
+                                      <SummaryStatValue>{realTimeData.length > 0 ? `${Math.round((new Date(realTimeData[realTimeData.length - 1].timestamp) - new Date(realTimeData[0].timestamp)) / (1000 * 60 * 60))}h` : 'N/A'}</SummaryStatValue>
                   <StatLabel>Duration</StatLabel>
                 </StatCard>
                 <StatCard>
-                  <StatValue>{realTimeData.length > 0 ? `${Math.round((new Date(realTimeData[realTimeData.length - 1].timestamp) - new Date(realTimeData[0].timestamp)) / (1000 * 60))} min` : 'N/A'}</StatValue>
+                                      <SummaryStatValue>{realTimeData.length > 0 ? `${Math.round((new Date(realTimeData[realTimeData.length - 1].timestamp) - new Date(realTimeData[0].timestamp)) / (1000 * 60))} min` : 'N/A'}</SummaryStatValue>
                   <StatLabel>Total Minutes</StatLabel>
                 </StatCard>
                 <StatCard>
-                  <StatValue>{realTimeData.length > 0 ? `${(realTimeData.length / 60).toFixed(1)}` : 'N/A'}</StatValue>
+                                      <SummaryStatValue>{realTimeData.length > 0 ? `${(realTimeData.length / 60).toFixed(1)}` : 'N/A'}</SummaryStatValue>
                   <StatLabel>Readings/Hour</StatLabel>
                 </StatCard>
               </GraphStats>
