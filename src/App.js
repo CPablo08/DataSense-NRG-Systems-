@@ -2251,13 +2251,45 @@ const App = () => {
 
 
   // Library functions
-  const loadLibraryFile = (libraryFile) => {
-    setRealTimeData(libraryFile.data);
-    setSummary(libraryFile.summary);
-    setHasData(true);
-    setTimeIndex(0);
-    setCurrentView('dashboard');
-    addLogEntry(`${t('loadedLibraryFile')}: ${libraryFile.name}`, 'success');
+  const loadLibraryFile = async (libraryFile) => {
+    try {
+      // Check if the file has data (processed files) or needs to load from backend
+      if (libraryFile.data && libraryFile.summary) {
+        // File has data, load directly
+        setRealTimeData(libraryFile.data);
+        setSummary(libraryFile.summary);
+        setHasData(true);
+        setTimeIndex(0);
+        setCurrentView('dashboard');
+        addLogEntry(`${t('loadedLibraryFile')}: ${libraryFile.name}`, 'success');
+      } else {
+        // File is from backend, needs to load data
+        addLogEntry(`Loading data for ${libraryFile.name} from backend...`, 'info');
+        
+        try {
+          // Load data from backend
+          const result = await apiService.getDataByFilename(libraryFile.name);
+          
+          if (result.data && result.summary) {
+            setRealTimeData(result.data);
+            setSummary(result.summary);
+            setHasData(true);
+            setTimeIndex(0);
+            setCurrentView('dashboard');
+            addLogEntry(`${t('loadedLibraryFile')}: ${libraryFile.name}`, 'success');
+          } else {
+            throw new Error('No data returned from backend');
+          }
+        } catch (apiError) {
+          console.error('Error loading data from backend:', apiError);
+          addLogEntry(`Cannot load data for ${libraryFile.name} - backend error: ${apiError.message}`, 'error');
+          alert(`Cannot load data for ${libraryFile.name}. The file data is not available in the backend.`);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading library file:', error);
+      addLogEntry(`Error loading ${libraryFile.name}: ${error.message}`, 'error');
+    }
   };
 
   // Check for duplicate files and merge them
@@ -3235,13 +3267,13 @@ const generatePDFReport = (data, timeRange, fileName) => {
                         </FileInfo>
                         <FileActions>
                           <ActionButton
-                            onClick={() => loadLibraryFile(file)}
+                            onClick={async () => await loadLibraryFile(file)}
                             title="Load this file"
                           >
                             <FiPlay />
                           </ActionButton>
                           <ActionButton
-                            onClick={() => loadLibraryFile(file)}
+                            onClick={async () => await loadLibraryFile(file)}
                             title="Re-visualize this file"
                           >
                             <FiBarChart2 />

@@ -447,6 +447,37 @@ async def get_data():
         logger.error(f"Error getting data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/data/{filename}")
+async def get_data_by_filename(filename: str):
+    """Get processed data for a specific filename"""
+    try:
+        data = load_data()
+        
+        # Filter data to only include records from the specified file
+        # This is a simplified approach - in a real implementation, you'd want to track which records came from which file
+        if data:
+            # For now, return all data since we don't track per-file data
+            # In the future, you could add a 'source_file' field to each record
+            summary = {
+                "totalRecords": len(data),
+                "sensorCount": len(data[0]) if data else 0,
+                "fileCount": 1,
+                "lastUpdate": datetime.now().isoformat(),
+                "filename": filename
+            }
+            
+            return {
+                "data": data,
+                "summary": summary,
+                "filename": filename
+            }
+        else:
+            raise HTTPException(status_code=404, detail="No data found")
+            
+    except Exception as e:
+        logger.error(f"Error getting data for {filename}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/files")
 async def get_files(db: Session = Depends(get_db)):
     """Get all file metadata with timestamps"""

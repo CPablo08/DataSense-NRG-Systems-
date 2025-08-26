@@ -220,6 +220,20 @@ class ApiService {
     }
   }
 
+  // Get data for a specific filename
+  async getDataByFilename(filename) {
+    try {
+      const response = await fetch(`${this.baseURL}/api/data/${encodeURIComponent(filename)}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting data for filename:', error);
+      throw error;
+    }
+  }
+
   // Process TXT file directly
   async processTxtFile(file) {
     try {
