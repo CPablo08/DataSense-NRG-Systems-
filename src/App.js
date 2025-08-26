@@ -3051,13 +3051,13 @@ const generatePDFReport = (data, timeRange, fileName) => {
             <FiBarChart2 />
             {t('dashboard')}
           </NavButton>
-          <NavButton 
-            active={currentView === 'library'}
-            onClick={() => setCurrentView('library')}
-          >
-            <FiFolder />
-            {t('library')}
-          </NavButton>
+                      <NavButton
+              active={currentView === 'library'}
+              onClick={() => setCurrentView('library')}
+            >
+              <FiDatabase />
+              Database
+            </NavButton>
           <NavButton 
             onClick={() => setShowSettings(true)}
           >
@@ -3557,10 +3557,10 @@ const generatePDFReport = (data, timeRange, fileName) => {
               <DashboardHeader>
                 <div>
                   <DashboardTitle>
-                    <FiFolder />
-                    {t('historicalDataLibrary')}
+                    <FiDatabase />
+                    Database Management
                   </DashboardTitle>
-                  <DashboardSubtitle>Browse and search historical RLD data files</DashboardSubtitle>
+                  <DashboardSubtitle>Manage and visualize your RLD data files</DashboardSubtitle>
                 </div>
                 
                 <InteractiveControls>
@@ -3570,55 +3570,10 @@ const generatePDFReport = (data, timeRange, fileName) => {
                       Delete Selected ({selectedFiles.length})
                     </ControlButton>
                   )}
-                  <ControlButton onClick={handleSelectAll}>
-                    {selectedFiles.length === libraryFiles.length ? 'Deselect All' : 'Select All'}
-                  </ControlButton>
                 </InteractiveControls>
               </DashboardHeader>
 
-              {/* Enhanced Search and Filter Section */}
-              <SearchFilterSection>
-                <SearchBox>
-                  <FiSearch />
-                  <input
-                    type="text"
-                    placeholder="Search files..."
-                    value={libraryFilters.search}
-                    onChange={(e) => handleFilterChange({ ...libraryFilters, search: e.target.value })}
-                  />
-                </SearchBox>
-                
-                <FilterSection>
-                  <select
-                    value={libraryFilters.category}
-                    onChange={(e) => handleFilterChange({ ...libraryFilters, category: e.target.value })}
-                    style={{ padding: '8px', borderRadius: '4px', background: '#21262d', color: '#fff', border: '1px solid #30363d' }}
-                  >
-                    <option value="">All Categories</option>
-                    {libraryCategories.map(category => (
-                      <option key={category} value={category}>{category.charAt(0).toUpperCase() + category.slice(1)}</option>
-                    ))}
-                  </select>
-                  
-                  <select
-                    value={libraryFilters.sortBy}
-                    onChange={(e) => handleFilterChange({ ...libraryFilters, sortBy: e.target.value })}
-                    style={{ padding: '8px', borderRadius: '4px', background: '#21262d', color: '#fff', border: '1px solid #30363d' }}
-                  >
-                    <option value="timestamp">Date</option>
-                    <option value="filename">Name</option>
-                    <option value="size">Size</option>
-                    <option value="records">Records</option>
-                  </select>
-                  
-                  <button
-                    onClick={() => handleFilterChange({ ...libraryFilters, sortOrder: libraryFilters.sortOrder === 'asc' ? 'desc' : 'asc' })}
-                    style={{ padding: '8px', borderRadius: '4px', background: '#21262d', color: '#fff', border: '1px solid #30363d' }}
-                  >
-                    {libraryFilters.sortOrder === 'asc' ? '↑' : '↓'}
-                  </button>
-                </FilterSection>
-              </SearchFilterSection>
+
 
               {/* Enhanced Library Statistics */}
               <LibraryStats>
@@ -3688,7 +3643,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                         <FileActions>
                           <ActionButton
                             onClick={() => deleteLibraryFile(file.id)}
-                            title="Delete this file"
+                            title="Delete this file permanently from database"
                             style={{ background: '#f85149' }}
                           >
                             <FiTrash2 />
@@ -3707,9 +3662,11 @@ const generatePDFReport = (data, timeRange, fileName) => {
                           </ActionButton>
                           <ActionButton
                             onClick={async () => await loadLibraryFile(file)}
-                            title="Visualize this file"
+                            title="Open and visualize this file in dashboard"
+                            style={{ background: '#1f6feb' }}
                           >
                             <FiBarChart2 />
+                            Visualize
                           </ActionButton>
                         </FileActions>
                       </LibraryCardHeader>

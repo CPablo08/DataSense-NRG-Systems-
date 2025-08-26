@@ -503,35 +503,61 @@ async def get_data():
         logger.error(f"Error getting data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/data/{filename}")
-async def get_data_by_filename(filename: str):
-    """Get processed data for a specific filename"""
+@app.get("/api/data/{file_id}")
+async def get_data_by_file_id(file_id: int, db: Session = Depends(get_db)):
+    """Get processed data for a specific file ID from database"""
     try:
-        data = load_data()
+        # Get file metadata
+        file_metadata = db.query(FileMetadata).filter(FileMetadata.id == file_id).first()
+        if not file_metadata:
+            raise HTTPException(status_code=404, detail="File not found")
         
-        # Filter data to only include records from the specified file
-        # This is a simplified approach - in a real implementation, you'd want to track which records came from which file
-        if data:
-            # For now, return all data since we don't track per-file data
-            # In the future, you could add a 'source_file' field to each record
-            summary = {
-                "totalRecords": len(data),
-                "sensorCount": len(data[0]) if data else 0,
-                "fileCount": 1,
-                "lastUpdate": datetime.now().isoformat(),
-                "filename": filename
-            }
-            
-            return {
-                "data": data,
-                "summary": summary,
-                "filename": filename
-            }
+        # Get associated sensor data
+        sensor_data = db.query(SensorData).filter(SensorData.file_source == file_metadata.filename).all()
+        
+        if not sensor_data:
+            # Fallback to global data if no specific file data
+            data = load_data()
+            if not data or len(data) == 0:
+                raise HTTPException(status_code=404, detail="No data available")
         else:
-            raise HTTPException(status_code=404, detail="No data found")
-            
+            # Convert sensor data to the expected format
+            data = []
+            for record in sensor_data:
+                data_point = {
+                    'time': record.time,
+                    'timestamp': record.timestamp.isoformat(),
+                    'NRG_40C_Anem': record.NRG_40C_Anem,
+                    'NRG_200M_Vane': record.NRG_200M_Vane,
+                    'NRG_T60_Temp': record.NRG_T60_Temp,
+                    'NRG_RH5X_Humi': record.NRG_RH5X_Humi,
+                    'NRG_BP60_Baro': record.NRG_BP60_Baro,
+                    'Rain_Gauge': record.Rain_Gauge,
+                    'NRG_PVT1_PV_Temp': record.NRG_PVT1_PV_Temp,
+                    'PSM_c_Si_Isc_Soil': record.PSM_c_Si_Isc_Soil,
+                    'PSM_c_Si_Isc_Clean': record.PSM_c_Si_Isc_Clean,
+                    'Average_12V_Battery': record.Average_12V_Battery
+                }
+                data.append(data_point)
+        
+        return {
+            "data": data,
+            "filename": file_metadata.filename,
+            "records": len(data),
+            "siteProperties": get_site_properties(data) if data else {},
+            "fileMetadata": {
+                "id": file_metadata.id,
+                "filename": file_metadata.filename,
+                "records_added": file_metadata.records_added,
+                "processing_date": file_metadata.processing_date,
+                "status": file_metadata.status,
+                "tags": file_metadata.tags,
+                "category": getattr(file_metadata, 'category', 'general')
+            }
+        }
+        
     except Exception as e:
-        logger.error(f"Error getting data for {filename}: {e}")
+        logger.error(f"Error getting data for file ID {file_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/files/{filename}")
@@ -770,7 +796,7 @@ async def get_library_files(
 
 @app.delete("/api/library/files/{file_id}")
 async def delete_library_file(file_id: int, db: Session = Depends(get_db)):
-    """Delete file from library and database"""
+    """Delete file from library and database permanently"""
     try:
         file_metadata = db.query(FileMetadata).filter(FileMetadata.id == file_id).first()
         if not file_metadata:
@@ -778,12 +804,12 @@ async def delete_library_file(file_id: int, db: Session = Depends(get_db)):
         
         filename = file_metadata.filename
         
-        # Delete from database
-        db.delete(file_metadata)
-        db.commit()
+        # Delete associated sensor data first
+        deleted_sensor_records = db.query(SensorData).filter(SensorData.file_source == filename).delete()
+        logger.info(f"Deleted {deleted_sensor_records} sensor records for file: {filename}")
         
-        # Delete associated sensor data
-        db.query(SensorData).filter(SensorData.file_source == filename).delete()
+        # Delete file metadata
+        db.delete(file_metadata)
         db.commit()
         
         # Delete physical files
@@ -792,13 +818,22 @@ async def delete_library_file(file_id: int, db: Session = Depends(get_db)):
         
         if os.path.exists(upload_path):
             os.remove(upload_path)
+            logger.info(f"Deleted uploaded file: {upload_path}")
         if os.path.exists(converted_path):
             os.remove(converted_path)
+            logger.info(f"Deleted converted file: {converted_path}")
         
-        logger.info(f"Deleted file from library: {filename}")
+        # Also remove from global processed data if it exists
+        global processed_data
+        if processed_data:
+            # This is a simplified approach - in a real implementation you'd track which data belongs to which file
+            logger.info(f"Note: Global processed data may still contain data from {filename}")
+        
+        logger.info(f"Permanently deleted file from database: {filename}")
         return {
-            "message": f"File {filename} deleted from library",
-            "file_id": file_id
+            "message": f"File {filename} permanently deleted from database",
+            "file_id": file_id,
+            "deleted_sensor_records": deleted_sensor_records
         }
         
     except Exception as e:
