@@ -15,6 +15,7 @@ import {
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import apiService from './services/api';
+import { libraryService } from './services/api';
 
 // Styled Components with darker colors
 const AppContainer = styled.div`
@@ -1622,11 +1623,9 @@ const translations = {
 const App = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [language, setLanguage] = useState('en');
-  const [selectedFiles, setSelectedFiles] = useState([]);
   const [realTimeData, setRealTimeData] = useState([]);
   const [timeIndex, setTimeIndex] = useState(0);
   const [hasData, setHasData] = useState(false);
-  const [libraryFiles, setLibraryFiles] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [enlargedGraph, setEnlargedGraph] = useState(null);
   const [analysisTimeRange, setAnalysisTimeRange] = useState({ start: 0, end: 0 });
@@ -2518,109 +2517,7 @@ const App = () => {
 
 
 
-  // Library functions
-  const deleteLibraryFile = async (fileId) => {
-    if (window.confirm('Are you sure you want to delete this file?')) {
-      try {
-        // Find the file to delete before removing it from state
-        const fileToDelete = libraryFiles.find(file => file.id === fileId);
-        
-        if (!fileToDelete) {
-          addLogEntry('File not found for deletion', 'error');
-          return;
-        }
-        
-        // Remove from state and localStorage
-        setLibraryFiles(prev => {
-          const updatedFiles = (prev || []).filter(file => file.id !== fileId);
-          localStorage.setItem('datasenseLibraryFiles', JSON.stringify(updatedFiles));
-          return updatedFiles;
-        });
-        
-        // If it's a backend file, also remove from backend
-        if (fileToDelete.source === 'backend') {
-          try {
-            await apiService.deleteFile(fileToDelete.name);
-            addLogEntry(`File ${fileToDelete.name} deleted from backend`, 'success');
-          } catch (error) {
-            console.error('Error deleting from backend:', error);
-            addLogEntry(`Error deleting from backend: ${error.message}`, 'error');
-          }
-        }
-        
-        addLogEntry(`File "${fileToDelete.name}" permanently deleted from library`, 'success');
-      } catch (error) {
-        console.error('Error deleting file:', error);
-        addLogEntry(`Error deleting file: ${error.message}`, 'error');
-      }
-    }
-  };
 
-  const loadLibraryFile = async (libraryFile) => {
-    try {
-      console.log('Loading library file:', libraryFile);
-      
-      // Check if the file has data (processed files) or needs to load from backend
-      if (libraryFile.data && libraryFile.summary) {
-        // File has data, load directly
-        console.log('Loading data directly from library file:', libraryFile.data.length, 'records');
-        setRealTimeData(libraryFile.data);
-        setSummary(libraryFile.summary);
-        setHasData(true);
-        setTimeIndex(0);
-        setCurrentView('dashboard');
-        addLogEntry(`${t('loadedLibraryFile')}: ${libraryFile.name}`, 'success');
-      } else {
-        // File is from backend, load current data from backend
-        addLogEntry(`Loading current data from backend for ${libraryFile.name}...`, 'info');
-        
-        try {
-          // Load current data from backend (simplified approach)
-          const result = await apiService.getData();
-          console.log('Backend data result:', result);
-          
-          if (result.data && result.data.length > 0) {
-            console.log('Loaded data from backend:', result.data.length, 'records');
-            console.log('Sample data record:', result.data[0]);
-            
-            const summary = {
-              totalRecords: result.data.length,
-              sensorCount: Object.keys(result.data[0] || {}).length,
-              fileCount: 1,
-              lastUpdate: new Date().toISOString()
-            };
-            
-            setRealTimeData(result.data);
-            setSummary(summary);
-            setHasData(true);
-            setTimeIndex(0);
-            setCurrentView('dashboard');
-            addLogEntry(`Loaded current data: ${result.data.length} records`, 'success');
-          } else {
-            throw new Error('No data available in backend');
-          }
-        } catch (apiError) {
-          console.error('Error loading data from backend:', apiError);
-          addLogEntry(`Cannot load data for ${libraryFile.name} - backend error: ${apiError.message}`, 'error');
-          alert(`Cannot load data for ${libraryFile.name}. No data is currently available in the backend.`);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading library file:', error);
-      addLogEntry(`Error loading ${libraryFile.name}: ${error.message}`, 'error');
-    }
-  };
-
-  // Check for duplicate files and merge them
-  const checkForDuplicates = (newFile) => {
-    const existingFiles = libraryFiles || [];
-    const duplicate = existingFiles.find(file => 
-      file.name === newFile.name && 
-      file.records === newFile.records &&
-      file.date === newFile.date
-    );
-    return duplicate;
-  };
 
   // Merge duplicate files by combining their data
   const mergeDuplicateFiles = (existingFile, newFile) => {
@@ -3073,6 +2970,233 @@ const generatePDFReport = (data, timeRange, fileName) => {
   
         addLogEntry(`${t('pdfReportGenerated')}: ${pdfFileName}`, 'success');
 };
+
+  // Enhanced Library State
+  const [libraryFiles, setLibraryFiles] = useState([]);
+  const [libraryStats, setLibraryStats] = useState({});
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [libraryFilters, setLibraryFilters] = useState({
+    search: '',
+    category: '',
+    tags: '',
+    sortBy: 'timestamp',
+    sortOrder: 'desc'
+  });
+  const [libraryPagination, setLibraryPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    pages: 0
+  });
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
+  const [libraryCategories] = useState([
+    'general', 'wind', 'solar', 'temperature', 'humidity', 'pressure', 'rainfall', 'battery'
+  ]);
+
+  // Enhanced Library Functions
+  const loadLibraryFiles = async (filters = libraryFilters, pagination = libraryPagination) => {
+    try {
+      setIsLoadingLibrary(true);
+      
+      const params = {
+        ...filters,
+        page: pagination.page,
+        limit: pagination.limit,
+        sort_by: filters.sortBy,
+        sort_order: filters.sortOrder
+      };
+      
+      const result = await libraryService.getLibraryFiles(params);
+      
+      setLibraryFiles(result.files);
+      setLibraryPagination(result.pagination);
+      setLibraryFilters(result.filters);
+      
+      console.log('Library files loaded:', result.files.length);
+    } catch (error) {
+      console.error('Error loading library files:', error);
+      addLogEntry(`Error loading library: ${error.message}`, 'error');
+    } finally {
+      setIsLoadingLibrary(false);
+    }
+  };
+
+  const loadLibraryStats = async () => {
+    try {
+      const stats = await libraryService.getLibraryStats();
+      setLibraryStats(stats);
+    } catch (error) {
+      console.error('Error loading library stats:', error);
+    }
+  };
+
+  const addFileToLibrary = async (fileData) => {
+    try {
+      const result = await libraryService.addToLibrary(fileData);
+      addLogEntry(`File added to library: ${fileData.filename}`, 'success');
+      
+      // Refresh library
+      await loadLibraryFiles();
+      await loadLibraryStats();
+      
+      return result;
+    } catch (error) {
+      console.error('Error adding file to library:', error);
+      addLogEntry(`Error adding file to library: ${error.message}`, 'error');
+      throw error;
+    }
+  };
+
+  const deleteLibraryFile = async (fileId) => {
+    if (window.confirm('Are you sure you want to delete this file?')) {
+      try {
+        await libraryService.deleteLibraryFile(fileId);
+        addLogEntry('File deleted from library', 'success');
+        
+        // Refresh library
+        await loadLibraryFiles();
+        await loadLibraryStats();
+      } catch (error) {
+        console.error('Error deleting library file:', error);
+        addLogEntry(`Error deleting file: ${error.message}`, 'error');
+      }
+    }
+  };
+
+  const bulkDeleteFiles = async () => {
+    if (selectedFiles.length === 0) {
+      alert('Please select files to delete');
+      return;
+    }
+    
+    if (window.confirm(`Are you sure you want to delete ${selectedFiles.length} files?`)) {
+      try {
+        const result = await libraryService.bulkDeleteFiles(selectedFiles);
+        addLogEntry(`Bulk delete completed: ${result.total_deleted} files deleted`, 'success');
+        
+        // Clear selection and refresh
+        setSelectedFiles([]);
+        await loadLibraryFiles();
+        await loadLibraryStats();
+      } catch (error) {
+        console.error('Error bulk deleting files:', error);
+        addLogEntry(`Error bulk deleting files: ${error.message}`, 'error');
+      }
+    }
+  };
+
+  const updateLibraryFile = async (fileId, updates) => {
+    try {
+      await libraryService.updateLibraryFile(fileId, updates);
+      addLogEntry('File metadata updated', 'success');
+      
+      // Refresh library
+      await loadLibraryFiles();
+    } catch (error) {
+      console.error('Error updating library file:', error);
+      addLogEntry(`Error updating file: ${error.message}`, 'error');
+    }
+  };
+
+  const exportLibraryFile = async (fileId, format = 'json') => {
+    try {
+      const result = await libraryService.exportLibraryFile(fileId, format);
+      
+      if (format === 'csv') {
+        // Download CSV file
+        const blob = new Blob([result.csv_data], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = result.filename;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      } else {
+        // Download JSON file
+        const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `file_${fileId}.json`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      }
+      
+      addLogEntry(`File exported as ${format.toUpperCase()}`, 'success');
+    } catch (error) {
+      console.error('Error exporting file:', error);
+      addLogEntry(`Error exporting file: ${error.message}`, 'error');
+    }
+  };
+
+  const loadLibraryFile = async (libraryFile) => {
+    try {
+      console.log('Loading library file:', libraryFile);
+      
+      // Load data from backend using file ID
+      const result = await libraryService.getFileData(libraryFile.id);
+      
+      if (result.data && result.data.length > 0) {
+        console.log('Loaded data from backend:', result.data.length, 'records');
+        
+        const summary = {
+          totalRecords: result.data.length,
+          sensorCount: Object.keys(result.data[0] || {}).length,
+          fileCount: 1,
+          lastUpdate: new Date().toISOString(),
+          siteProperties: result.siteProperties || {}
+        };
+        
+        setRealTimeData(result.data);
+        setSummary(summary);
+        setHasData(true);
+        setTimeIndex(0);
+        setCurrentView('dashboard');
+        addLogEntry(`Loaded library file: ${libraryFile.name}`, 'success');
+      } else {
+        throw new Error('No data available for this file');
+      }
+    } catch (error) {
+      console.error('Error loading library file:', error);
+      addLogEntry(`Error loading ${libraryFile.name}: ${error.message}`, 'error');
+      alert(`Cannot load data for ${libraryFile.name}. ${error.message}`);
+    }
+  };
+
+  const handleFileSelection = (fileId) => {
+    setSelectedFiles(prev => {
+      if (prev.includes(fileId)) {
+        return prev.filter(id => id !== fileId);
+      } else {
+        return [...prev, fileId];
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedFiles.length === libraryFiles.length) {
+      setSelectedFiles([]);
+    } else {
+      setSelectedFiles(libraryFiles.map(file => file.id));
+    }
+  };
+
+  const handleFilterChange = (newFilters) => {
+    setLibraryFilters(newFilters);
+    setLibraryPagination(prev => ({ ...prev, page: 1 }));
+    loadLibraryFiles(newFilters, { ...libraryPagination, page: 1 });
+  };
+
+  const handlePageChange = (newPage) => {
+    setLibraryPagination(prev => ({ ...prev, page: newPage }));
+    loadLibraryFiles(libraryFilters, { ...libraryPagination, page: newPage });
+  };
+
+  // Load library on component mount
+  useEffect(() => {
+    loadLibraryFiles();
+    loadLibraryStats();
+  }, []);
 
   return (
     <AppContainer>

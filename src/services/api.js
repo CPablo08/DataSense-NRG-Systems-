@@ -313,6 +313,108 @@ class ApiService {
   }
 }
 
+// Library Management Functions
+export const libraryService = {
+  // Get library files with advanced filtering
+  async getLibraryFiles(params = {}) {
+    const queryParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== '') {
+        queryParams.append(key, params[key]);
+      }
+    });
+    
+    const response = await fetch(`${API_BASE_URL}/api/library/files?${queryParams}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch library files: ${response.statusText}`);
+    }
+    return await response.json();
+  },
+
+  // Add file to library
+  async addToLibrary(fileData) {
+    const response = await fetch(`${API_BASE_URL}/api/library/add`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(fileData),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to add file to library: ${response.statusText}`);
+    }
+    return await response.json();
+  },
+
+  // Delete file from library
+  async deleteLibraryFile(fileId) {
+    const response = await fetch(`${API_BASE_URL}/api/library/files/${fileId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to delete library file: ${response.statusText}`);
+    }
+    return await response.json();
+  },
+
+  // Bulk delete files
+  async bulkDeleteFiles(fileIds) {
+    const response = await fetch(`${API_BASE_URL}/api/library/files/bulk-delete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ file_ids: fileIds }),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to bulk delete files: ${response.statusText}`);
+    }
+    return await response.json();
+  },
+
+  // Update library file metadata
+  async updateLibraryFile(fileId, updates) {
+    const response = await fetch(`${API_BASE_URL}/api/library/files/${fileId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to update library file: ${response.statusText}`);
+    }
+    return await response.json();
+  },
+
+  // Get library statistics
+  async getLibraryStats() {
+    const response = await fetch(`${API_BASE_URL}/api/library/stats`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch library stats: ${response.statusText}`);
+    }
+    return await response.json();
+  },
+
+  // Export library file
+  async exportLibraryFile(fileId, format = 'json') {
+    const response = await fetch(`${API_BASE_URL}/api/library/export/${fileId}?format=${format}`);
+    if (!response.ok) {
+      throw new Error(`Failed to export library file: ${response.statusText}`);
+    }
+    return await response.json();
+  },
+
+  // Get file data by ID
+  async getFileData(fileId) {
+    const response = await fetch(`${API_BASE_URL}/api/data/${fileId}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch file data: ${response.statusText}`);
+    }
+    return await response.json();
+  }
+};
+
 // Create singleton instance
 const apiService = new ApiService();
 

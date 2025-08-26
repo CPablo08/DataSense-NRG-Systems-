@@ -33,6 +33,11 @@ class FileMetadata(Base):
     status = Column(String)
     tags = Column(JSON, default=list)
     source = Column(String, default="backend")
+    category = Column(String, default="general")
+    description = Column(Text, nullable=True)
+    version = Column(Integer, default=1)
+    checksum = Column(String, nullable=True)
+    last_accessed = Column(DateTime, default=datetime.utcnow)
 
 class SensorData(Base):
     __tablename__ = "sensor_data"

@@ -7,7 +7,7 @@ FastAPI backend for RLD file processing and data visualization
 import os
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -629,6 +629,373 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         websocket_connections.remove(websocket)
         logger.info("WebSocket client disconnected")
+
+# Add new library management endpoints after the existing endpoints
+
+@app.post("/api/library/add")
+async def add_to_library(
+    filename: str,
+    file_size: int,
+    records_count: int,
+    tags: List[str] = [],
+    category: str = "general",
+    description: str = "",
+    db: Session = Depends(get_db)
+):
+    """Add file to library with enhanced metadata"""
+    try:
+        # Check if file already exists
+        existing_file = db.query(FileMetadata).filter(FileMetadata.filename == filename).first()
+        if existing_file:
+            # Update existing file
+            existing_file.records_added = records_count
+            existing_file.file_size = file_size
+            existing_file.tags = tags
+            existing_file.status = "updated"
+            existing_file.processing_date = datetime.now().isoformat()
+            db.commit()
+            logger.info(f"Updated existing file in library: {filename}")
+            return {
+                "message": f"File {filename} updated in library",
+                "file_id": existing_file.id,
+                "action": "updated"
+            }
+        
+        # Create new library entry
+        new_file = FileMetadata(
+            filename=filename,
+            records_added=records_count,
+            file_size=file_size,
+            processing_date=datetime.now().isoformat(),
+            status="active",
+            tags=tags,
+            source="backend"
+        )
+        
+        db.add(new_file)
+        db.commit()
+        db.refresh(new_file)
+        
+        logger.info(f"Added file to library: {filename}")
+        return {
+            "message": f"File {filename} added to library",
+            "file_id": new_file.id,
+            "action": "created"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error adding file to library: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/library/files")
+async def get_library_files(
+    search: str = "",
+    category: str = "",
+    tags: str = "",
+    page: int = 1,
+    limit: int = 20,
+    sort_by: str = "timestamp",
+    sort_order: str = "desc",
+    db: Session = Depends(get_db)
+):
+    """Get library files with advanced filtering and pagination"""
+    try:
+        query = db.query(FileMetadata)
+        
+        # Apply search filter
+        if search:
+            query = query.filter(FileMetadata.filename.contains(search))
+        
+        # Apply category filter
+        if category:
+            query = query.filter(FileMetadata.category == category)
+        
+        # Apply tags filter
+        if tags:
+            tag_list = [tag.strip() for tag in tags.split(",")]
+            for tag in tag_list:
+                query = query.filter(FileMetadata.tags.contains([tag]))
+        
+        # Apply sorting
+        if sort_by == "filename":
+            query = query.order_by(FileMetadata.filename.asc() if sort_order == "asc" else FileMetadata.filename.desc())
+        elif sort_by == "size":
+            query = query.order_by(FileMetadata.file_size.asc() if sort_order == "asc" else FileMetadata.file_size.desc())
+        elif sort_by == "records":
+            query = query.order_by(FileMetadata.records_added.asc() if sort_order == "asc" else FileMetadata.records_added.desc())
+        else:  # timestamp
+            query = query.order_by(FileMetadata.timestamp.asc() if sort_order == "asc" else FileMetadata.timestamp.desc())
+        
+        # Apply pagination
+        total_count = query.count()
+        offset = (page - 1) * limit
+        files = query.offset(offset).limit(limit).all()
+        
+        # Convert to response format
+        file_list = []
+        for file in files:
+            file_list.append({
+                "id": file.id,
+                "name": file.filename,
+                "records": file.records_added,
+                "file_size": file.file_size,
+                "processing_date": file.processing_date,
+                "timestamp": file.timestamp.isoformat(),
+                "status": file.status,
+                "tags": file.tags or [],
+                "source": file.source,
+                "category": getattr(file, 'category', 'general')
+            })
+        
+        return {
+            "files": file_list,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total_count,
+                "pages": (total_count + limit - 1) // limit
+            },
+            "filters": {
+                "search": search,
+                "category": category,
+                "tags": tags,
+                "sort_by": sort_by,
+                "sort_order": sort_order
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting library files: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/library/files/{file_id}")
+async def delete_library_file(file_id: int, db: Session = Depends(get_db)):
+    """Delete file from library and database"""
+    try:
+        file_metadata = db.query(FileMetadata).filter(FileMetadata.id == file_id).first()
+        if not file_metadata:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        filename = file_metadata.filename
+        
+        # Delete from database
+        db.delete(file_metadata)
+        db.commit()
+        
+        # Delete associated sensor data
+        db.query(SensorData).filter(SensorData.file_source == filename).delete()
+        db.commit()
+        
+        # Delete physical files
+        upload_path = f"uploads/{filename}"
+        converted_path = f"converted/{filename}"
+        
+        if os.path.exists(upload_path):
+            os.remove(upload_path)
+        if os.path.exists(converted_path):
+            os.remove(converted_path)
+        
+        logger.info(f"Deleted file from library: {filename}")
+        return {
+            "message": f"File {filename} deleted from library",
+            "file_id": file_id
+        }
+        
+    except Exception as e:
+        logger.error(f"Error deleting library file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/library/files/bulk-delete")
+async def bulk_delete_files(file_ids: List[int], db: Session = Depends(get_db)):
+    """Delete multiple files from library"""
+    try:
+        deleted_files = []
+        failed_files = []
+        
+        for file_id in file_ids:
+            try:
+                file_metadata = db.query(FileMetadata).filter(FileMetadata.id == file_id).first()
+                if file_metadata:
+                    filename = file_metadata.filename
+                    
+                    # Delete from database
+                    db.delete(file_metadata)
+                    
+                    # Delete associated sensor data
+                    db.query(SensorData).filter(SensorData.file_source == filename).delete()
+                    
+                    # Delete physical files
+                    upload_path = f"uploads/{filename}"
+                    converted_path = f"converted/{filename}"
+                    
+                    if os.path.exists(upload_path):
+                        os.remove(upload_path)
+                    if os.path.exists(converted_path):
+                        os.remove(converted_path)
+                    
+                    deleted_files.append(filename)
+                    logger.info(f"Deleted file from library: {filename}")
+                else:
+                    failed_files.append(f"File ID {file_id} not found")
+            except Exception as e:
+                failed_files.append(f"Error deleting file ID {file_id}: {str(e)}")
+        
+        db.commit()
+        
+        return {
+            "message": f"Bulk delete completed",
+            "deleted_files": deleted_files,
+            "failed_files": failed_files,
+            "total_deleted": len(deleted_files),
+            "total_failed": len(failed_files)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in bulk delete: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/library/files/{file_id}")
+async def update_library_file(
+    file_id: int,
+    tags: List[str] = None,
+    category: str = None,
+    description: str = None,
+    db: Session = Depends(get_db)
+):
+    """Update library file metadata"""
+    try:
+        file_metadata = db.query(FileMetadata).filter(FileMetadata.id == file_id).first()
+        if not file_metadata:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        if tags is not None:
+            file_metadata.tags = tags
+        if category is not None:
+            file_metadata.category = category
+        if description is not None:
+            file_metadata.description = description
+        
+        file_metadata.status = "updated"
+        db.commit()
+        
+        logger.info(f"Updated library file: {file_metadata.filename}")
+        return {
+            "message": f"File {file_metadata.filename} updated",
+            "file_id": file_id
+        }
+        
+    except Exception as e:
+        logger.error(f"Error updating library file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/library/stats")
+async def get_library_stats(db: Session = Depends(get_db)):
+    """Get comprehensive library statistics"""
+    try:
+        total_files = db.query(FileMetadata).count()
+        total_records = db.query(FileMetadata.records_added).all()
+        total_records_sum = sum([r[0] for r in total_records if r[0]])
+        
+        # Get file size statistics
+        file_sizes = db.query(FileMetadata.file_size).all()
+        total_size = sum([s[0] for s in file_sizes if s[0]])
+        
+        # Get recent files (last 30 days)
+        thirty_days_ago = datetime.now() - timedelta(days=30)
+        recent_files = db.query(FileMetadata).filter(FileMetadata.timestamp >= thirty_days_ago).count()
+        
+        # Get files by source
+        backend_files = db.query(FileMetadata).filter(FileMetadata.source == "backend").count()
+        local_files = total_files - backend_files
+        
+        # Get most common tags
+        all_tags = []
+        for file in db.query(FileMetadata).all():
+            if file.tags:
+                all_tags.extend(file.tags)
+        
+        tag_counts = {}
+        for tag in all_tags:
+            tag_counts[tag] = tag_counts.get(tag, 0) + 1
+        
+        top_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        return {
+            "total_files": total_files,
+            "total_records": total_records_sum,
+            "total_size_bytes": total_size,
+            "total_size_mb": round(total_size / (1024 * 1024), 2),
+            "recent_files_30_days": recent_files,
+            "backend_files": backend_files,
+            "local_files": local_files,
+            "top_tags": top_tags,
+            "last_updated": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting library stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/library/export/{file_id}")
+async def export_library_file(file_id: int, format: str = "json", db: Session = Depends(get_db)):
+    """Export library file in different formats"""
+    try:
+        file_metadata = db.query(FileMetadata).filter(FileMetadata.id == file_id).first()
+        if not file_metadata:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        filename = file_metadata.filename
+        
+        # Get associated sensor data
+        sensor_data = db.query(SensorData).filter(SensorData.file_source == filename).all()
+        
+        if format.lower() == "json":
+            data = {
+                "metadata": {
+                    "id": file_metadata.id,
+                    "filename": file_metadata.filename,
+                    "records": file_metadata.records_added,
+                    "file_size": file_metadata.file_size,
+                    "processing_date": file_metadata.processing_date,
+                    "timestamp": file_metadata.timestamp.isoformat(),
+                    "status": file_metadata.status,
+                    "tags": file_metadata.tags,
+                    "source": file_metadata.source
+                },
+                "sensor_data": [
+                    {
+                        "timestamp": record.timestamp.isoformat(),
+                        "time": record.time,
+                        "NRG_40C_Anem": record.NRG_40C_Anem,
+                        "NRG_200M_Vane": record.NRG_200M_Vane,
+                        "NRG_T60_Temp": record.NRG_T60_Temp,
+                        "NRG_RH5X_Humi": record.NRG_RH5X_Humi,
+                        "NRG_BP60_Baro": record.NRG_BP60_Baro,
+                        "Rain_Gauge": record.Rain_Gauge,
+                        "NRG_PVT1_PV_Temp": record.NRG_PVT1_PV_Temp,
+                        "PSM_c_Si_Isc_Soil": record.PSM_c_Si_Isc_Soil,
+                        "PSM_c_Si_Isc_Clean": record.PSM_c_Si_Isc_Clean,
+                        "Average_12V_Battery": record.Average_12V_Battery
+                    }
+                    for record in sensor_data
+                ]
+            }
+            return JSONResponse(content=data)
+        
+        elif format.lower() == "csv":
+            # Return CSV format
+            csv_content = "timestamp,time,NRG_40C_Anem,NRG_200M_Vane,NRG_T60_Temp,NRG_RH5X_Humi,NRG_BP60_Baro,Rain_Gauge,NRG_PVT1_PV_Temp,PSM_c_Si_Isc_Soil,PSM_c_Si_Isc_Clean,Average_12V_Battery\n"
+            for record in sensor_data:
+                csv_content += f"{record.timestamp},{record.time},{record.NRG_40C_Anem},{record.NRG_200M_Vane},{record.NRG_T60_Temp},{record.NRG_RH5X_Humi},{record.NRG_BP60_Baro},{record.Rain_Gauge},{record.NRG_PVT1_PV_Temp},{record.PSM_c_Si_Isc_Soil},{record.PSM_c_Si_Isc_Clean},{record.Average_12V_Battery}\n"
+            
+            return JSONResponse(content={"csv_data": csv_content, "filename": f"{filename}.csv"})
+        
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported format. Use 'json' or 'csv'")
+        
+    except Exception as e:
+        logger.error(f"Error exporting library file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Setup directories
 setup_directories()
