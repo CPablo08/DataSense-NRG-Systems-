@@ -3288,47 +3288,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 </SitePropertiesCard>
               )}
 
-              <SummaryCards>
-                <SummaryCard>
-                  <SummaryIcon>
-                    <FiDatabase />
-                  </SummaryIcon>
-                  <SummaryContent>
-                                            <SummaryValue>{hasData && summary ? summary.totalRecords : t('noData')}</SummaryValue>
-                    <SummaryLabel>{t('totalRecords')}</SummaryLabel>
-                  </SummaryContent>
-                </SummaryCard>
 
-                <SummaryCard>
-                  <SummaryIcon>
-                    <FiActivity />
-                  </SummaryIcon>
-                  <SummaryContent>
-                                            <SummaryValue>{hasData && summary ? summary.sensorCount : t('noData')}</SummaryValue>
-                    <SummaryLabel>{t('sensorCount')}</SummaryLabel>
-                  </SummaryContent>
-                </SummaryCard>
-
-                <SummaryCard>
-                  <SummaryIcon>
-                    <FiFile />
-                  </SummaryIcon>
-                  <SummaryContent>
-                                            <SummaryValue>{hasData && summary ? summary.fileCount : t('noData')}</SummaryValue>
-                    <SummaryLabel>{t('fileCount')}</SummaryLabel>
-                  </SummaryContent>
-                </SummaryCard>
-
-                <SummaryCard>
-                  <SummaryIcon>
-                    <FiClock />
-                  </SummaryIcon>
-                  <SummaryContent>
-                                            <SummaryValue>{hasData && summary ? summary.lastUpdate : t('noData')}</SummaryValue>
-                    <SummaryLabel>{t('lastUpdate')}</SummaryLabel>
-                  </SummaryContent>
-                </SummaryCard>
-              </SummaryCards>
 
               {/* Data Performance Stats */}
               {hasData && realTimeData && realTimeData.length > 0 && (
