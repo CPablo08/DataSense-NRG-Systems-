@@ -3630,7 +3630,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                                 </StatValueItem>
                               </StatValues>
                               <StatReadings>{data.readings} readings</StatReadings>
-                            </StatItem>
+                            </StatisticsItem>
                           ))}
                         </StatisticsGrid>
                       ) : (
