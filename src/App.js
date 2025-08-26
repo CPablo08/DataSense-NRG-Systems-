@@ -418,7 +418,7 @@ const SitePropertiesCard = styled.div`
   border: 1px solid #30363d;
   border-radius: 8px;
   padding: 20px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   transition: all 0.3s ease;
   
   &:hover {
@@ -624,7 +624,7 @@ const DataStats = styled.div`
   border: 1px solid #30363d;
   border-radius: 8px;
   padding: 15px;
-  margin: 20px 0;
+  margin: 10px 0 20px 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -3241,80 +3241,106 @@ const generatePDFReport = (data, timeRange, fileName) => {
               </DashboardHeader>
 
               {/* Site Properties */}
-              {summary?.siteProperties && (
-                <SitePropertiesCard>
-                  <SitePropertiesTitle>
-                    <FiGlobe />
-                    Site Information
-                  </SitePropertiesTitle>
-                  <SitePropertiesContent>
-                    {summary.siteProperties['Site Number'] && (
-                      <SiteProperty>
-                        <PropertyLabel>Site Number:</PropertyLabel>
-                        <PropertyValue>{summary.siteProperties['Site Number']}</PropertyValue>
-                      </SiteProperty>
-                    )}
-                    {summary.siteProperties['Location'] && (
-                      <SiteProperty>
-                        <PropertyLabel>Location:</PropertyLabel>
-                        <PropertyValue>{summary.siteProperties['Location']}</PropertyValue>
-                      </SiteProperty>
-                    )}
-                    {summary.siteProperties['Latitude'] && (
-                      <SiteProperty>
-                        <PropertyLabel>Latitude:</PropertyLabel>
-                        <PropertyValue>{summary.siteProperties['Latitude']}</PropertyValue>
-                      </SiteProperty>
-                    )}
-                    {summary.siteProperties['Longitude'] && (
-                      <SiteProperty>
-                        <PropertyLabel>Longitude:</PropertyLabel>
-                        <PropertyValue>{summary.siteProperties['Longitude']}</PropertyValue>
-                      </SiteProperty>
-                    )}
-                    {summary.siteProperties['Elevation'] && (
-                      <SiteProperty>
-                        <PropertyLabel>Elevation:</PropertyLabel>
-                        <PropertyValue>{summary.siteProperties['Elevation']} m</PropertyValue>
-                      </SiteProperty>
-                    )}
-                    {summary.siteProperties['Time Zone'] && (
-                      <SiteProperty>
-                        <PropertyLabel>Time Zone:</PropertyLabel>
-                        <PropertyValue>{summary.siteProperties['Time Zone']}</PropertyValue>
-                      </SiteProperty>
-                    )}
-                  </SitePropertiesContent>
-                </SitePropertiesCard>
-              )}
+              <SitePropertiesCard>
+                <SitePropertiesTitle>
+                  <FiGlobe />
+                  Site Information
+                </SitePropertiesTitle>
+                <SitePropertiesContent>
+                  {summary?.siteProperties?.['Site Number'] ? (
+                    <SiteProperty>
+                      <PropertyLabel>Site Number:</PropertyLabel>
+                      <PropertyValue>{summary.siteProperties['Site Number']}</PropertyValue>
+                    </SiteProperty>
+                  ) : (
+                    <SiteProperty>
+                      <PropertyLabel>Site Number:</PropertyLabel>
+                      <PropertyValue>No data available</PropertyValue>
+                    </SiteProperty>
+                  )}
+                  {summary?.siteProperties?.['Location'] ? (
+                    <SiteProperty>
+                      <PropertyLabel>Location:</PropertyLabel>
+                      <PropertyValue>{summary.siteProperties['Location']}</PropertyValue>
+                    </SiteProperty>
+                  ) : (
+                    <SiteProperty>
+                      <PropertyLabel>Location:</PropertyLabel>
+                      <PropertyValue>No data available</PropertyValue>
+                    </SiteProperty>
+                  )}
+                  {summary?.siteProperties?.['Latitude'] ? (
+                    <SiteProperty>
+                      <PropertyLabel>Latitude:</PropertyLabel>
+                      <PropertyValue>{summary.siteProperties['Latitude']}</PropertyValue>
+                    </SiteProperty>
+                  ) : (
+                    <SiteProperty>
+                      <PropertyLabel>Latitude:</PropertyLabel>
+                      <PropertyValue>No data available</PropertyValue>
+                    </SiteProperty>
+                  )}
+                  {summary?.siteProperties?.['Longitude'] ? (
+                    <SiteProperty>
+                      <PropertyLabel>Longitude:</PropertyLabel>
+                      <PropertyValue>{summary.siteProperties['Longitude']}</PropertyValue>
+                    </SiteProperty>
+                  ) : (
+                    <SiteProperty>
+                      <PropertyLabel>Longitude:</PropertyLabel>
+                      <PropertyValue>No data available</PropertyValue>
+                    </SiteProperty>
+                  )}
+                  {summary?.siteProperties?.['Elevation'] ? (
+                    <SiteProperty>
+                      <PropertyLabel>Elevation:</PropertyLabel>
+                      <PropertyValue>{summary.siteProperties['Elevation']} m</PropertyValue>
+                    </SiteProperty>
+                  ) : (
+                    <SiteProperty>
+                      <PropertyLabel>Elevation:</PropertyLabel>
+                      <PropertyValue>No data available</PropertyValue>
+                    </SiteProperty>
+                  )}
+                  {summary?.siteProperties?.['Time Zone'] ? (
+                    <SiteProperty>
+                      <PropertyLabel>Time Zone:</PropertyLabel>
+                      <PropertyValue>{summary.siteProperties['Time Zone']}</PropertyValue>
+                    </SiteProperty>
+                  ) : (
+                    <SiteProperty>
+                      <PropertyLabel>Time Zone:</PropertyLabel>
+                      <PropertyValue>No data available</PropertyValue>
+                    </SiteProperty>
+                  )}
+                </SitePropertiesContent>
+              </SitePropertiesCard>
 
 
 
               {/* Data Performance Stats */}
-              {hasData && realTimeData && realTimeData.length > 0 && (
-                <DataStats>
-                  <DataStatItem>
-                    <DataStatValue>{filteredData.length.toLocaleString()}</DataStatValue>
-                    <StatLabel>Loaded Records</StatLabel>
-                  </DataStatItem>
-                  <DataStatItem>
-                    <DataStatValue>{realTimeData.length.toLocaleString()}</DataStatValue>
-                    <StatLabel>Total Records</StatLabel>
-                  </DataStatItem>
-                  <DataStatItem>
-                    <DataStatValue>{Math.round((filteredData.length / realTimeData.length) * 100)}%</DataStatValue>
-                    <StatLabel>Data Loaded</StatLabel>
-                  </DataStatItem>
-                  <DataStatItem>
-                    <DataStatValue>{dataChunkSize}</DataStatValue>
-                    <StatLabel>Chunk Size</StatLabel>
-                  </DataStatItem>
-                  <DataStatItem>
-                    <DataStatValue>{currentChunkIndex + 1}</DataStatValue>
-                    <StatLabel>Current Chunk</StatLabel>
-                  </DataStatItem>
-                </DataStats>
-              )}
+              <DataStats>
+                <DataStatItem>
+                  <DataStatValue>{hasData && realTimeData ? filteredData.length.toLocaleString() : '0'}</DataStatValue>
+                  <StatLabel>Loaded Records</StatLabel>
+                </DataStatItem>
+                <DataStatItem>
+                  <DataStatValue>{hasData && realTimeData ? realTimeData.length.toLocaleString() : '0'}</DataStatValue>
+                  <StatLabel>Total Records</StatLabel>
+                </DataStatItem>
+                <DataStatItem>
+                  <DataStatValue>{hasData && realTimeData && realTimeData.length > 0 ? Math.round((filteredData.length / realTimeData.length) * 100) : 0}%</DataStatValue>
+                  <StatLabel>Data Loaded</StatLabel>
+                </DataStatItem>
+                <DataStatItem>
+                  <DataStatValue>{dataChunkSize}</DataStatValue>
+                  <StatLabel>Chunk Size</StatLabel>
+                </DataStatItem>
+                <DataStatItem>
+                  <DataStatValue>{currentChunkIndex + 1}</DataStatValue>
+                  <StatLabel>Current Chunk</StatLabel>
+                </DataStatItem>
+              </DataStats>
 
               {/* Load More Button */}
               {hasData && realTimeData && filteredData.length < realTimeData.length && (
