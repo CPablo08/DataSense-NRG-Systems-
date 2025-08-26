@@ -234,6 +234,20 @@ class ApiService {
     }
   }
 
+  // Get all current data
+  async getData() {
+    try {
+      const response = await fetch(`${this.baseURL}/api/data`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting data:', error);
+      throw error;
+    }
+  }
+
   // Process TXT file directly
   async processTxtFile(file) {
     try {

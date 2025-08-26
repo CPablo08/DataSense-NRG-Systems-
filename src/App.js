@@ -9,7 +9,7 @@ import {
   FiCloud, FiSettings, FiBarChart2, FiPlay,
   FiThermometer, FiDroplet, FiWind, FiSun, FiBattery, FiAlertCircle, FiDatabase,
   FiTrendingUp, FiActivity, FiFolder, FiFile, FiClock, FiRotateCcw,
-  FiGlobe, FiDownload, FiSearch, FiX, FiUpload
+  FiGlobe, FiDownload, FiSearch, FiX, FiUpload, FiTrash2
 } from 'react-icons/fi';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -1466,7 +1466,6 @@ const App = () => {
   const [hasData, setHasData] = useState(false);
   const [libraryFiles, setLibraryFiles] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [selectedFilesToDelete, setSelectedFilesToDelete] = useState([]);
   const [enlargedGraph, setEnlargedGraph] = useState(null);
   const [analysisTimeRange, setAnalysisTimeRange] = useState({ start: 0, end: 0 });
   const [settings, setSettings] = useState({
@@ -1518,8 +1517,7 @@ const App = () => {
   const [uploadMode, setUploadMode] = useState('txt'); // 'txt' or 'rld'
   const [uploadStatus, setUploadStatus] = useState({ loading: false, message: '', error: false });
 
-  // Cleanup modal state
-  const [showCleanupModal, setShowCleanupModal] = useState(false);
+  // Cleanup modal state removed - using individual delete buttons instead
 
 
   // Check backend status
@@ -2251,6 +2249,13 @@ const App = () => {
 
 
   // Library functions
+  const deleteLibraryFile = (fileId) => {
+    if (window.confirm('Are you sure you want to delete this file?')) {
+      setLibraryFiles(prev => (prev || []).filter(file => file.id !== fileId));
+      addLogEntry('File deleted from library', 'info');
+    }
+  };
+
   const loadLibraryFile = async (libraryFile) => {
     try {
       // Check if the file has data (processed files) or needs to load from backend
@@ -2263,27 +2268,34 @@ const App = () => {
         setCurrentView('dashboard');
         addLogEntry(`${t('loadedLibraryFile')}: ${libraryFile.name}`, 'success');
       } else {
-        // File is from backend, needs to load data
-        addLogEntry(`Loading data for ${libraryFile.name} from backend...`, 'info');
+        // File is from backend, load current data from backend
+        addLogEntry(`Loading current data from backend for ${libraryFile.name}...`, 'info');
         
         try {
-          // Load data from backend
-          const result = await apiService.getDataByFilename(libraryFile.name);
+          // Load current data from backend (simplified approach)
+          const result = await apiService.getData();
           
-          if (result.data && result.summary) {
+          if (result.data && result.data.length > 0) {
+            const summary = {
+              totalRecords: result.data.length,
+              sensorCount: Object.keys(result.data[0] || {}).length,
+              fileCount: 1,
+              lastUpdate: new Date().toISOString()
+            };
+            
             setRealTimeData(result.data);
-            setSummary(result.summary);
+            setSummary(summary);
             setHasData(true);
             setTimeIndex(0);
             setCurrentView('dashboard');
-            addLogEntry(`${t('loadedLibraryFile')}: ${libraryFile.name}`, 'success');
+            addLogEntry(`Loaded current data: ${result.data.length} records`, 'success');
           } else {
-            throw new Error('No data returned from backend');
+            throw new Error('No data available in backend');
           }
         } catch (apiError) {
           console.error('Error loading data from backend:', apiError);
           addLogEntry(`Cannot load data for ${libraryFile.name} - backend error: ${apiError.message}`, 'error');
-          alert(`Cannot load data for ${libraryFile.name}. The file data is not available in the backend.`);
+          alert(`Cannot load data for ${libraryFile.name}. No data is currently available in the backend.`);
         }
       }
     } catch (error) {
@@ -2578,30 +2590,7 @@ const App = () => {
     setUploadStatus({ loading: false, message: '', error: false });
   };
 
-  // Cleanup functions
-  const handleFileSelectionForCleanup = (fileId) => {
-    setSelectedFilesToDelete(prev => 
-      prev.includes(fileId) 
-        ? prev.filter(id => id !== fileId)
-        : [...prev, fileId]
-    );
-  };
-
-  const performCleanup = () => {
-    // Remove selected files from library
-    setLibraryFiles(prev => (prev || []).filter(file => !selectedFilesToDelete.includes(file.id)));
-    
-    // Clear selection
-    setSelectedFilesToDelete([]);
-    setShowCleanupModal(false);
-    
-    addLogEntry(`Cleaned up ${selectedFilesToDelete.length} files`, 'info');
-  };
-
-  const closeCleanupModal = () => {
-    setShowCleanupModal(false);
-    setSelectedFilesToDelete([]);
-  };
+  // Cleanup functions removed - using individual delete buttons instead
 
 // PDF Report Generation
 const generatePDFReport = (data, timeRange, fileName) => {
@@ -3174,13 +3163,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 </div>
                 
                 <InteractiveControls>
-                  <ControlButton 
-                    onClick={() => setShowCleanupModal(true)}
-                    title="Clean up old files"
-                  >
-                    <FiX />
-                    Cleanup
-                  </ControlButton>
+                  {/* Cleanup functionality removed - individual delete buttons now available */}
                 </InteractiveControls>
               </DashboardHeader>
 
@@ -3267,14 +3250,15 @@ const generatePDFReport = (data, timeRange, fileName) => {
                         </FileInfo>
                         <FileActions>
                           <ActionButton
-                            onClick={async () => await loadLibraryFile(file)}
-                            title="Load this file"
+                            onClick={() => deleteLibraryFile(file.id)}
+                            title="Delete this file"
+                            style={{ background: '#f85149' }}
                           >
-                            <FiPlay />
+                            <FiTrash2 />
                           </ActionButton>
                           <ActionButton
                             onClick={async () => await loadLibraryFile(file)}
-                            title="Re-visualize this file"
+                            title="Visualize this file"
                           >
                             <FiBarChart2 />
                           </ActionButton>
@@ -3801,97 +3785,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
         </>
       )}
 
-      {/* Cleanup Modal */}
-      {showCleanupModal && (
-        <>
-          <ModalOverlay
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={closeCleanupModal}
-          />
-          <UploadModal
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          >
-            <ModalTitle>
-              <FiX />
-              Cleanup Files
-            </ModalTitle>
-            
-            <ModalContent>
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '10px', color: '#fff' }}>
-                  Select files to delete:
-                </label>
-                <div style={{ 
-                  maxHeight: '300px', 
-                  overflowY: 'auto', 
-                  background: '#0d1117', 
-                  border: '1px solid #30363d', 
-                  borderRadius: '4px', 
-                  padding: '10px',
-                  marginBottom: '15px'
-                }}>
-                  {(libraryFiles || []).map((file) => (
-                    <div key={file.id} style={{ 
-                      padding: '10px', 
-                      borderBottom: '1px solid #30363d',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px'
-                    }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedFilesToDelete.includes(file.id)}
-                        onChange={() => handleFileSelectionForCleanup(file.id)}
-                        style={{ margin: 0 }}
-                      />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ color: '#fff', fontSize: '14px', fontWeight: 'bold' }}>
-                          {file.name}
-                        </div>
-                        <div style={{ color: '#8b949e', fontSize: '12px' }}>
-                          {file.records} records • {file.processingDate || new Date(file.date).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                <div style={{
-                  padding: '10px',
-                  borderRadius: '4px',
-                  backgroundColor: '#0d1117',
-                  border: '1px solid #30363d',
-                  color: '#8b949e',
-                  fontSize: '12px'
-                }}>
-                  Selected: {selectedFilesToDelete.length} files
-                </div>
-              </div>
-            </ModalContent>
-            
-            <ModalActions>
-              <ControlButton
-                onClick={closeCleanupModal}
-                style={{ background: '#30363d' }}
-              >
-                Cancel
-              </ControlButton>
-              <ControlButton
-                onClick={performCleanup}
-                disabled={selectedFilesToDelete.length === 0}
-                style={{ background: selectedFilesToDelete.length === 0 ? '#30363d' : '#f85149' }}
-              >
-                Delete {selectedFilesToDelete.length} Files
-              </ControlButton>
-            </ModalActions>
-          </UploadModal>
-        </>
-      )}
+      {/* Cleanup Modal removed - using individual delete buttons instead */}
 
       {/* Settings Panel */}
       {showSettings && (
