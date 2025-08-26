@@ -2618,21 +2618,28 @@ const App = () => {
   // File upload functions
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
+    console.log('Files selected:', files.map(f => f.name));
+    
     if (files.length > 0) {
       // Limit to 10 files
       const limitedFiles = files.slice(0, 10);
+      console.log('Processing files:', limitedFiles.map(f => f.name));
       setUploadedFiles(limitedFiles);
-      // Automatically start processing
-      await processUploadedFiles();
+      // Automatically start processing with the files directly
+      await processUploadedFiles(limitedFiles);
     }
   };
 
   // Auto-process single file with format detection
   const autoProcessFile = async (file) => {
     try {
+      console.log('Auto-processing file:', file.name, 'Size:', file.size, 'Type:', file.type);
+      
       // Auto-detect file format
       const isRldFile = file.name.toLowerCase().endsWith('.rld');
       const isTxtFile = file.name.toLowerCase().endsWith('.txt');
+      
+      console.log('File format detection:', { isRldFile, isTxtFile, fileName: file.name });
       
       if (!isRldFile && !isTxtFile) {
         throw new Error('Unsupported file format. Please upload .rld or .txt files.');
@@ -2642,52 +2649,65 @@ const App = () => {
       
       if (isTxtFile) {
         // Process TXT file directly
+        console.log('Processing TXT file directly:', file.name);
         setProcessingProgress({ current: 1, total: 1, message: `Processing ${file.name}...` });
         result = await apiService.processTxtFile(file);
+        console.log('TXT processing completed:', result);
       } else {
         // Convert RLD to TXT first, then process
+        console.log('Converting RLD to TXT first:', file.name);
         setProcessingProgress({ current: 1, total: 2, message: `Converting ${file.name} to TXT...` });
         const conversionResult = await apiService.convertRldToTxt(file);
+        console.log('RLD conversion completed:', conversionResult);
         
         setProcessingProgress({ current: 2, total: 2, message: `Processing converted ${file.name}...` });
         // Create a new file object with the converted content
         const txtFile = new File([conversionResult.txt_content], file.name.replace('.rld', '.txt'), { type: 'text/plain' });
         result = await apiService.processTxtFile(txtFile);
+        console.log('Converted file processing completed:', result);
       }
       
       return result;
     } catch (error) {
-      console.error('Auto-processing error:', error);
+      console.error('Auto-processing error for file:', file.name, error);
       throw error;
     }
   };
 
-  const processUploadedFiles = async () => {
-    if (uploadedFiles.length === 0) return;
-
-    setIsProcessing(true);
-    setProcessingProgress({ current: 0, total: uploadedFiles.length, message: 'Starting file processing...' });
+  const processUploadedFiles = async (filesToProcess = uploadedFiles) => {
+    console.log('processUploadedFiles called with:', filesToProcess.length, 'files');
+    if (filesToProcess.length === 0) {
+      console.log('No files to process');
+      return;
+    }
 
     try {
+      setIsProcessing(true);
+      setProcessingProgress({ current: 0, total: filesToProcess.length, message: 'Starting file processing...' });
+      console.log('Processing started for files:', filesToProcess.map(f => f.name));
+
       let processedCount = 0;
       let errorCount = 0;
       const errors = [];
       let lastProcessedData = null;
 
-      for (let i = 0; i < uploadedFiles.length; i++) {
-        const file = uploadedFiles[i];
+      for (let i = 0; i < filesToProcess.length; i++) {
+        const file = filesToProcess[i];
         try {
+          console.log(`Processing file ${i + 1}/${filesToProcess.length}: ${file.name}`);
           setProcessingProgress({ 
             current: i + 1, 
-            total: uploadedFiles.length, 
+            total: filesToProcess.length, 
             message: `Processing ${file.name}...` 
           });
 
           const result = await autoProcessFile(file);
+          console.log('File processed successfully:', file.name, result);
           lastProcessedData = result;
           processedCount++;
           
         } catch (error) {
+          console.error('Error processing file:', file.name, error);
           errorCount++;
           errors.push(`${file.name}: ${error.message}`);
         }
