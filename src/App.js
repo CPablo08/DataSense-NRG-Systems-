@@ -1689,7 +1689,7 @@ const App = () => {
   const [isLoadingMoreData, setIsLoadingMoreData] = useState(false);
   const [dataCache, setDataCache] = useState(new Map()); // LRU cache for data chunks
   const [filteredData, setFilteredData] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [dataSearchTerm, setDataSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'time', direction: 'asc' });
 
   // Cleanup modal state removed - using individual delete buttons instead
@@ -1760,7 +1760,7 @@ const App = () => {
   // Debounced search function
   const debouncedSearch = useCallback(
     debounce((term) => {
-      setSearchTerm(term);
+      setDataSearchTerm(term);
       if (realTimeData && realTimeData.length > 0) {
         const filtered = filterAndSortData(realTimeData, term, sortConfig);
         setFilteredData(filtered.slice(0, dataChunkSize));
