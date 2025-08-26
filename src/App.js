@@ -2612,11 +2612,25 @@ const App = () => {
           };
 
           try {
-            await addFileToLibrary(fileData);
-            addLogEntry(`File ${lastProcessedData.filename} processed and added to library`, 'success');
+            console.log('Adding file to database:', fileData);
+            const dbResult = await addFileToLibrary(fileData);
+            console.log('Database registration result:', dbResult);
+            addLogEntry(`✅ File ${lastProcessedData.filename} successfully registered to database (ID: ${dbResult.file_id})`, 'success');
+            
+            // Verify the file is in the database
+            await loadLibraryFiles();
+            const libraryFiles = await libraryService.getLibraryFiles();
+            const fileInDb = libraryFiles.files.find(f => f.filename === lastProcessedData.filename);
+            if (fileInDb) {
+              addLogEntry(`✅ Database verification successful: File found in database`, 'success');
+            } else {
+              addLogEntry(`⚠️ Database verification failed: File not found in database`, 'warning');
+            }
           } catch (error) {
-            console.error('Error adding file to library:', error);
-            addLogEntry(`Error adding file to library: ${error.message}`, 'error');
+            console.error('Error adding file to database:', error);
+            addLogEntry(`❌ Error registering file to database: ${error.message}`, 'error');
+            // Show user-friendly error
+            alert(`File processed successfully but failed to register in database. Please try again.`);
           }
         }
       }

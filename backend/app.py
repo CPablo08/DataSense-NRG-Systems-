@@ -668,26 +668,32 @@ async def add_to_library(
     description: str = "",
     db: Session = Depends(get_db)
 ):
-    """Add file to library with enhanced metadata"""
+    """Add file to library with enhanced metadata and robust database registration"""
     try:
+        logger.info(f"Attempting to add file to database: {filename} (records: {records_count}, size: {file_size})")
+        
         # Check if file already exists
         existing_file = db.query(FileMetadata).filter(FileMetadata.filename == filename).first()
         if existing_file:
             # Update existing file
+            logger.info(f"File already exists in database, updating: {filename}")
             existing_file.records_added = records_count
             existing_file.file_size = file_size
             existing_file.tags = tags
             existing_file.status = "updated"
             existing_file.processing_date = datetime.now().isoformat()
             db.commit()
-            logger.info(f"Updated existing file in library: {filename}")
+            logger.info(f"✅ Successfully updated existing file in database: {filename} (ID: {existing_file.id})")
             return {
-                "message": f"File {filename} updated in library",
+                "message": f"File {filename} updated in database",
                 "file_id": existing_file.id,
-                "action": "updated"
+                "action": "updated",
+                "filename": filename,
+                "records_count": records_count
             }
         
         # Create new library entry
+        logger.info(f"Creating new database entry for file: {filename}")
         new_file = FileMetadata(
             filename=filename,
             records_added=records_count,
@@ -702,16 +708,30 @@ async def add_to_library(
         db.commit()
         db.refresh(new_file)
         
-        logger.info(f"Added file to library: {filename}")
+        logger.info(f"✅ Successfully added file to database: {filename} (ID: {new_file.id})")
+        
+        # Verify the file was actually saved
+        verification = db.query(FileMetadata).filter(FileMetadata.id == new_file.id).first()
+        if verification:
+            logger.info(f"✅ Database verification successful: File {filename} confirmed in database")
+        else:
+            logger.error(f"❌ Database verification failed: File {filename} not found after save")
+            raise Exception("Database verification failed")
+        
         return {
-            "message": f"File {filename} added to library",
+            "message": f"File {filename} successfully registered in database",
             "file_id": new_file.id,
-            "action": "created"
+            "action": "created",
+            "filename": filename,
+            "records_count": records_count,
+            "verified": True
         }
         
     except Exception as e:
-        logger.error(f"Error adding file to library: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"❌ Error adding file to database: {filename} - {e}")
+        # Rollback any partial changes
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database registration failed: {str(e)}")
 
 @app.get("/api/library/files")
 async def get_library_files(
@@ -1031,6 +1051,47 @@ async def export_library_file(file_id: int, format: str = "json", db: Session = 
     except Exception as e:
         logger.error(f"Error exporting library file: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+def ensure_file_registered_to_database(filename: str, records_count: int, file_size: int, source: str = "backend", db: Session = None):
+    """Ensure file is registered in the database library"""
+    try:
+        if not db:
+            db = next(get_db())
+        
+        # Check if file already exists
+        existing_file = db.query(FileMetadata).filter(FileMetadata.filename == filename).first()
+        
+        if existing_file:
+            # Update existing file
+            existing_file.records_added = records_count
+            existing_file.file_size = file_size
+            existing_file.status = "updated"
+            existing_file.processing_date = datetime.now().isoformat()
+            db.commit()
+            logger.info(f"✅ Updated existing file in database: {filename}")
+            return existing_file.id
+        else:
+            # Create new entry
+            new_file = FileMetadata(
+                filename=filename,
+                records_added=records_count,
+                file_size=file_size,
+                processing_date=datetime.now().isoformat(),
+                status="active",
+                tags=[],
+                source=source
+            )
+            db.add(new_file)
+            db.commit()
+            db.refresh(new_file)
+            logger.info(f"✅ Registered new file to database: {filename} (ID: {new_file.id})")
+            return new_file.id
+            
+    except Exception as e:
+        logger.error(f"❌ Error ensuring file registration in database: {filename} - {e}")
+        if db:
+            db.rollback()
+        return None
 
 # Setup directories
 setup_directories()
