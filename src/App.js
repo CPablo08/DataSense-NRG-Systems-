@@ -2299,18 +2299,47 @@ const App = () => {
 
 
   // Library functions
-  const deleteLibraryFile = (fileId) => {
+  const deleteLibraryFile = async (fileId) => {
     if (window.confirm('Are you sure you want to delete this file?')) {
-      setLibraryFiles(prev => (prev || []).filter(file => file.id !== fileId));
-      addLogEntry('File deleted from library', 'info');
+      try {
+        // Remove from state
+        setLibraryFiles(prev => {
+          const updatedFiles = (prev || []).filter(file => file.id !== fileId);
+          
+          // Update localStorage
+          localStorage.setItem('datasenseLibraryFiles', JSON.stringify(updatedFiles));
+          
+          return updatedFiles;
+        });
+        
+        // If it's a backend file, also remove from backend
+        const fileToDelete = libraryFiles.find(file => file.id === fileId);
+        if (fileToDelete && fileToDelete.source === 'backend') {
+          try {
+            await apiService.deleteFile(fileToDelete.name);
+            addLogEntry(`File ${fileToDelete.name} deleted from backend`, 'info');
+          } catch (error) {
+            console.error('Error deleting from backend:', error);
+            addLogEntry(`Error deleting from backend: ${error.message}`, 'error');
+          }
+        }
+        
+        addLogEntry('File permanently deleted from library', 'success');
+      } catch (error) {
+        console.error('Error deleting file:', error);
+        addLogEntry(`Error deleting file: ${error.message}`, 'error');
+      }
     }
   };
 
   const loadLibraryFile = async (libraryFile) => {
     try {
+      console.log('Loading library file:', libraryFile);
+      
       // Check if the file has data (processed files) or needs to load from backend
       if (libraryFile.data && libraryFile.summary) {
         // File has data, load directly
+        console.log('Loading data directly from library file:', libraryFile.data.length, 'records');
         setRealTimeData(libraryFile.data);
         setSummary(libraryFile.summary);
         setHasData(true);
@@ -2324,8 +2353,12 @@ const App = () => {
         try {
           // Load current data from backend (simplified approach)
           const result = await apiService.getData();
+          console.log('Backend data result:', result);
           
           if (result.data && result.data.length > 0) {
+            console.log('Loaded data from backend:', result.data.length, 'records');
+            console.log('Sample data record:', result.data[0]);
+            
             const summary = {
               totalRecords: result.data.length,
               sensorCount: Object.keys(result.data[0] || {}).length,

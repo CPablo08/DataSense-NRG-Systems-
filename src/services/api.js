@@ -248,6 +248,22 @@ class ApiService {
     }
   }
 
+  // Delete a file
+  async deleteFile(filename) {
+    try {
+      const response = await fetch(`${this.baseURL}/api/files/${encodeURIComponent(filename)}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      throw error;
+    }
+  }
+
   // Process TXT file directly
   async processTxtFile(file) {
     try {

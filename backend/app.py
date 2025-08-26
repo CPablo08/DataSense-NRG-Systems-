@@ -140,34 +140,22 @@ def process_txt_file(txt_file: str) -> List[Dict]:
         header_line = lines[header_line_index]
         headers = header_line.split('\t')
         
-        # Map column indices to sensor names
-        sensor_mapping = {}
-        for i, header in enumerate(headers):
-            header = header.strip()
-            if "Ch1_Anem" in header and "Avg" in header:
-                sensor_mapping["NRG_40C_Anem"] = i  # Wind Speed
-            elif "Ch13_Vane" in header and "Avg" in header:
-                sensor_mapping["NRG_200M_Vane"] = i  # Wind Direction
-            elif "Ch14_Analog" in header and "Avg" in header:
-                sensor_mapping["NRG_T60_Temp"] = i  # Temperature
-            elif "Ch16_Analog" in header and "Avg" in header:
-                sensor_mapping["NRG_RH5X_Humi"] = i  # Humidity
-            elif "Ch17_Analog" in header and "Avg" in header:
-                sensor_mapping["NRG_BP60_Baro"] = i  # Pressure
-            elif "Ch20_Analog" in header and "Avg" in header:
-                sensor_mapping["Rain_Gauge"] = i  # Rainfall
-            elif "Ch21_Therm" in header and "Avg" in header:
-                sensor_mapping["NRG_PVT1_PV_Temp"] = i  # PV Temperature
-            elif "Ch22_Analog" in header and "Avg" in header:
-                sensor_mapping["PSM_c_Si_Isc_Soil"] = i  # Solar Current Soil
-            elif "Ch23_Analog" in header and "Avg" in header:
-                sensor_mapping["PSM_c_Si_Isc_Clean"] = i  # Solar Current Clean
-            elif "Ch24_Analog" in header and "Avg" in header:
-                sensor_mapping["Solar_Irradiance_1"] = i  # Solar Irradiance 1
-            elif "Ch25_Analog" in header and "Avg" in header:
-                sensor_mapping["Solar_Irradiance_2"] = i  # Solar Irradiance 2
-            elif "Ch26_Analog" in header and "Avg" in header:
-                sensor_mapping["Solar_Irradiance_3"] = i  # Solar Irradiance 3
+        # Map column indices to sensor names based on actual file structure
+        sensor_mapping = {
+            "NRG_40C_Anem": 1,      # Ch1_Anem_0.00m_N_Avg_m/s (Wind Speed)
+            "NRG_200M_Vane": 7,     # Ch13_Vane_0.00m_N_Avg_Deg (Wind Direction)
+            "NRG_T60_Temp": 10,     # Ch14_Analog_0.00m_N_Avg_C (Temperature)
+            "NRG_RH5X_Humi": 14,    # Ch16_Analog_0.00m_N_Avg_%RH (Humidity)
+            "NRG_BP60_Baro": 18,    # Ch17_Analog_0.00m_N_Avg_hPa (Pressure)
+            "Rain_Gauge": 6,        # Ch4_Total_0.00m_N_Sum_mm (Rainfall)
+            "NRG_PVT1_PV_Temp": 26, # Ch21_Therm_0.00m_N_Avg_C (PV Temperature)
+            "PSM_c_Si_Isc_Soil": 30, # Ch22_Analog_0.00m_N_Avg_A (Solar Current Soil)
+            "PSM_c_Si_Isc_Clean": 34, # Ch23_Analog_0.00m_N_Avg_A (Solar Current Clean)
+            "Solar_Irradiance_1": 38, # Ch24_Analog_0.00m_N_Avg_W/m2 (Solar Irradiance 1)
+            "Solar_Irradiance_2": 42, # Ch25_Analog_0.00m_N_Avg_W/m2 (Solar Irradiance 2)
+            "Solar_Irradiance_3": 46, # Ch26_Analog_0.00m_N_Avg_W/m2 (Solar Irradiance 3)
+            "Average_12V_Battery": 22  # Ch20_Analog_0.00m_N_Avg_hPa (Battery Voltage)
+        }
         
         logger.info(f"Found sensor mapping: {sensor_mapping}")
         
@@ -549,6 +537,38 @@ async def get_data_by_filename(filename: str):
             
     except Exception as e:
         logger.error(f"Error getting data for {filename}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/files/{filename}")
+async def delete_file(filename: str, db: Session = Depends(get_db)):
+    """Delete a file from the system"""
+    try:
+        # Remove file metadata from database
+        db_metadata = db.query(FileMetadata).filter(FileMetadata.filename == filename).first()
+        if db_metadata:
+            db.delete(db_metadata)
+            db.commit()
+            logger.info(f"File metadata deleted from database: {filename}")
+        
+        # Remove uploaded file
+        upload_path = f"uploads/{filename}"
+        if os.path.exists(upload_path):
+            os.remove(upload_path)
+            logger.info(f"Uploaded file deleted: {upload_path}")
+        
+        # Remove converted file if it exists
+        converted_path = f"converted/{filename}"
+        if os.path.exists(converted_path):
+            os.remove(converted_path)
+            logger.info(f"Converted file deleted: {converted_path}")
+        
+        return {
+            "message": f"File {filename} deleted successfully",
+            "filename": filename
+        }
+        
+    except Exception as e:
+        logger.error(f"Error deleting file {filename}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/files")
