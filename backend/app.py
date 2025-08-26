@@ -238,6 +238,26 @@ def extract_site_properties(txt_file: str) -> Dict:
         logger.error(f"Error extracting site properties: {e}")
         return {}
 
+def extract_site_properties_from_data(data: List[Dict]) -> Dict:
+    """Extract site properties from processed data"""
+    if not data or len(data) == 0:
+        return {}
+    
+    # Get the first record to extract site properties
+    first_record = data[0]
+    
+    # Extract site properties (these would be in the header of the original file)
+    site_properties = {
+        "site_name": "NRG DataSense Site",
+        "location": "Unknown",
+        "elevation": "Unknown",
+        "coordinates": "Unknown",
+        "installation_date": "Unknown",
+        "last_calibration": "Unknown"
+    }
+    
+    return site_properties
+
 def load_data() -> List[Dict]:
     """Load processed data from file"""
     if os.path.exists(data_storage_file):
@@ -544,7 +564,7 @@ async def get_data_by_file_id(file_id: int, db: Session = Depends(get_db)):
             "data": data,
             "filename": file_metadata.filename,
             "records": len(data),
-            "siteProperties": get_site_properties(data) if data else {},
+            "siteProperties": extract_site_properties_from_data(data) if data else {},
             "fileMetadata": {
                 "id": file_metadata.id,
                 "filename": file_metadata.filename,

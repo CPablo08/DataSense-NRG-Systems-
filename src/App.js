@@ -992,16 +992,28 @@ const FileName = styled.div`
 
 const FileMeta = styled.div`
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 4px;
   color: #8b949e;
   font-size: 12px;
-  
-  span {
-    &:not(:last-child)::after {
-      content: '•';
-      margin-left: 8px;
-    }
-  }
+  margin-top: 8px;
+`;
+
+const MetaItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const MetaLabel = styled.span`
+  font-weight: 500;
+  color: #7d8590;
+  min-width: 60px;
+`;
+
+const MetaValue = styled.span`
+  color: #fff;
+  font-weight: 400;
 `;
 
 const FileActions = styled.div`
@@ -1677,6 +1689,7 @@ const App = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadMode, setUploadMode] = useState('txt'); // 'txt' or 'rld'
   const [uploadStatus, setUploadStatus] = useState({ loading: false, message: '', error: false });
+  const [currentFile, setCurrentFile] = useState(null);
   
   // Global loading state
   const [isProcessing, setIsProcessing] = useState(false);
@@ -2728,7 +2741,8 @@ const generatePDFReport = (data, timeRange, fileName) => {
   doc.setFontSize(12);
   doc.setTextColor(...textColor);
         doc.text(`${t('generated')}: ${new Date().toLocaleString()}`, margin + 5, 65);
-      doc.text(`${t('file')}: ${fileName} | ${t('records')}: ${data.length}`, margin + 5, 75);
+        const currentFileName = currentFile ? (currentFile.filename || currentFile.name) : fileName;
+        doc.text(`${t('file')}: ${currentFileName} | ${t('records')}: ${data.length}`, margin + 5, 75);
 
   // Data Summary Table - First Half
   doc.setFontSize(16);
@@ -2936,6 +2950,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
   const loadLibraryFile = async (libraryFile) => {
     try {
       console.log('Loading library file:', libraryFile);
+      setCurrentFile(libraryFile); // Set current file for PDF generation
       
       // Load data from backend using file ID
       const result = await libraryService.getFileData(libraryFile.id);
@@ -2956,14 +2971,14 @@ const generatePDFReport = (data, timeRange, fileName) => {
         setHasData(true);
         setTimeIndex(0);
         setCurrentView('dashboard');
-        addLogEntry(`Loaded library file: ${libraryFile.name}`, 'success');
+        addLogEntry(`Loaded library file: ${libraryFile.filename || libraryFile.name}`, 'success');
       } else {
         throw new Error('No data available for this file');
       }
     } catch (error) {
       console.error('Error loading library file:', error);
-      addLogEntry(`Error loading ${libraryFile.name}: ${error.message}`, 'error');
-      alert(`Cannot load data for ${libraryFile.name}. ${error.message}`);
+      addLogEntry(`Error loading ${libraryFile.filename || libraryFile.name}: ${error.message}`, 'error');
+      alert(`Cannot load data for ${libraryFile.filename || libraryFile.name}. ${error.message}`);
     }
   };
 
@@ -3639,19 +3654,20 @@ const generatePDFReport = (data, timeRange, fileName) => {
                           <FiFile />
                         </FileIcon>
                         <FileInfo>
-                          <FileName>{file.name}</FileName>
+                          <FileName>{file.filename || file.name}</FileName>
                           <FileMeta>
-                            <span>{file.records?.toLocaleString()} records</span>
-                            <span>•</span>
-                            <span>{new Date(file.timestamp).toLocaleDateString()}</span>
-                            <span>•</span>
-                            <span>{file.category || 'general'}</span>
-                            {file.tags && file.tags.length > 0 && (
-                              <>
-                                <span>•</span>
-                                <span>{file.tags.join(', ')}</span>
-                              </>
-                            )}
+                            <MetaItem>
+                              <MetaLabel>Records:</MetaLabel>
+                              <MetaValue>{file.records_added?.toLocaleString() || file.records?.toLocaleString() || '0'}</MetaValue>
+                            </MetaItem>
+                            <MetaItem>
+                              <MetaLabel>Date:</MetaLabel>
+                              <MetaValue>{new Date(file.timestamp).toLocaleDateString()}</MetaValue>
+                            </MetaItem>
+                            <MetaItem>
+                              <MetaLabel>Category:</MetaLabel>
+                              <MetaValue>{file.category || 'general'}</MetaValue>
+                            </MetaItem>
                           </FileMeta>
                         </FileInfo>
                         <FileActions>
@@ -3661,18 +3677,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                             style={{ background: '#f85149' }}
                           >
                             <FiTrash2 />
-                          </ActionButton>
-                          <ActionButton
-                            onClick={() => exportLibraryFile(file.id, 'json')}
-                            title="Export as JSON"
-                          >
-                            <FiDownload />
-                          </ActionButton>
-                          <ActionButton
-                            onClick={() => exportLibraryFile(file.id, 'csv')}
-                            title="Export as CSV"
-                          >
-                            <FiFileText />
+                            Delete
                           </ActionButton>
                           <ActionButton
                             onClick={async () => await loadLibraryFile(file)}
