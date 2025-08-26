@@ -2792,7 +2792,6 @@ const generatePDFReport = (data, timeRange, fileName) => {
   // Enhanced Library State
   const [libraryFiles, setLibraryFiles] = useState([]);
   const [libraryStats, setLibraryStats] = useState({});
-  const [selectedFiles, setSelectedFiles] = useState([]);
   const [libraryFilters, setLibraryFilters] = useState({
     search: '',
     category: '',
@@ -2881,27 +2880,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
     }
   };
 
-  const bulkDeleteFiles = async () => {
-    if (selectedFiles.length === 0) {
-      alert('Please select files to delete');
-      return;
-    }
-    
-    if (window.confirm(`Are you sure you want to delete ${selectedFiles.length} files?`)) {
-      try {
-        const result = await libraryService.bulkDeleteFiles(selectedFiles);
-        addLogEntry(`Bulk delete completed: ${result.total_deleted} files deleted`, 'success');
-        
-        // Clear selection and refresh
-        setSelectedFiles([]);
-        await loadLibraryFiles();
-        await loadLibraryStats();
-      } catch (error) {
-        console.error('Error bulk deleting files:', error);
-        addLogEntry(`Error bulk deleting files: ${error.message}`, 'error');
-      }
-    }
-  };
+
 
   const updateLibraryFile = async (fileId, updates) => {
     try {
@@ -2982,23 +2961,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
     }
   };
 
-  const handleFileSelection = (fileId) => {
-    setSelectedFiles(prev => {
-      if (prev.includes(fileId)) {
-        return prev.filter(id => id !== fileId);
-      } else {
-        return [...prev, fileId];
-      }
-    });
-  };
 
-  const handleSelectAll = () => {
-    if (selectedFiles.length === libraryFiles.length) {
-      setSelectedFiles([]);
-    } else {
-      setSelectedFiles(libraryFiles.map(file => file.id));
-    }
-  };
 
   const handleFilterChange = (newFilters) => {
     setLibraryFilters(newFilters);
@@ -3592,14 +3555,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   <DashboardSubtitle>Manage and visualize your RLD data files</DashboardSubtitle>
                 </div>
                 
-                <InteractiveControls>
-                  {selectedFiles.length > 0 && (
-                    <ControlButton onClick={bulkDeleteFiles} style={{ background: '#f85149' }}>
-                      <FiTrash2 />
-                      Delete Selected ({selectedFiles.length})
-                    </ControlButton>
-                  )}
-                </InteractiveControls>
+
               </DashboardHeader>
 
 
@@ -3644,12 +3600,6 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   libraryFiles.map((file) => (
                     <LibraryCard key={file.id}>
                       <LibraryCardHeader>
-                        <input
-                          type="checkbox"
-                          checked={selectedFiles.includes(file.id)}
-                          onChange={() => handleFileSelection(file.id)}
-                          style={{ marginRight: '12px' }}
-                        />
                         <FileIcon>
                           <FiFile />
                         </FileIcon>
@@ -3677,7 +3627,6 @@ const generatePDFReport = (data, timeRange, fileName) => {
                             style={{ background: '#f85149' }}
                           >
                             <FiTrash2 />
-                            Delete
                           </ActionButton>
                           <ActionButton
                             onClick={async () => await loadLibraryFile(file)}
@@ -3685,7 +3634,6 @@ const generatePDFReport = (data, timeRange, fileName) => {
                             style={{ background: '#1f6feb' }}
                           >
                             <FiBarChart2 />
-                            Visualize
                           </ActionButton>
                         </FileActions>
                       </LibraryCardHeader>
