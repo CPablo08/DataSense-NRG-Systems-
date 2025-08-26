@@ -10,7 +10,7 @@ import {
   FiCloud, FiSettings, FiBarChart2, FiPlay,
   FiThermometer, FiDroplet, FiWind, FiSun, FiBattery, FiAlertCircle, FiDatabase,
   FiTrendingUp, FiActivity, FiFolder, FiFile, FiClock, FiRotateCcw,
-  FiGlobe, FiDownload, FiSearch, FiX, FiUpload, FiTrash2
+  FiGlobe, FiDownload, FiSearch, FiX, FiUpload, FiTrash2, FiFileText
 } from 'react-icons/fi';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -1860,118 +1860,17 @@ const App = () => {
 
 
 
-  // Load library files from localStorage and backend on app start
+  // Load library files from database on app start
   useEffect(() => {
-    const loadFiles = async () => {
-      // Load local files
-      const savedFiles = localStorage.getItem('datasenseLibraryFiles');
-      let localFiles = [];
-      
-      if (savedFiles) {
-        const files = JSON.parse(savedFiles);
-      
-      // Clean old data (older than 1 year)
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-      
-      const currentTime = new Date();
-      const cleanedFiles = files.filter(file => {
-        const fileDate = new Date(file.date);
-        const isOlderThanOneYear = fileDate < oneYearAgo;
-        
-        if (isOlderThanOneYear) {
-          console.log(`Auto-deleting old file: ${file.name} (${fileDate.toLocaleDateString()})`);
-        }
-        
-        return !isOlderThanOneYear;
-      });
-      
-      // Update localStorage with cleaned data
-      if (cleanedFiles.length !== files.length) {
-        localStorage.setItem('datasenseLibraryFiles', JSON.stringify(cleanedFiles));
-        console.log(`Auto-cleanup: Removed ${files.length - cleanedFiles.length} old files`);
-      }
-      
-        localFiles = cleanedFiles;
-      }
-      
-      // Load backend files
-      try {
-        const backendResponse = await apiService.getFileMetadata();
-        const backendFiles = backendResponse.files.map(file => ({
-          id: `backend-${file.filename}`,
-          name: file.filename,
-          date: file.timestamp,
-          records: file.records_added,
-          size: file.file_size,
-          processingDate: file.processing_date,
-          status: file.status,
-          source: 'backend',
-          tags: []
-        }));
-        
-        // Combine local and backend files with duplicate detection
-        const allFiles = [...localFiles];
-        
-        // Add backend files, checking for duplicates
-        backendFiles.forEach(backendFile => {
-          const duplicate = allFiles.find(localFile => 
-            localFile.name === backendFile.name && 
-            localFile.records === backendFile.records
-          );
-          
-          if (duplicate) {
-            console.log(`Duplicate detected: ${backendFile.name} - merging data`);
-            // Merge the files by updating the existing one
-            const index = allFiles.indexOf(duplicate);
-            allFiles[index] = {
-              ...duplicate,
-              source: 'merged',
-              date: new Date().toISOString(),
-              processingDate: backendFile.processingDate
-            };
-          } else {
-            allFiles.push(backendFile);
-          }
-        });
-        
-        setLibraryFiles(allFiles);
-        
-        // Extract all unique tags
-      const allTags = new Set();
-        allFiles.forEach(file => {
-        if (file.tags && Array.isArray(file.tags)) {
-          file.tags.forEach(tag => allTags.add(tag));
-        }
-      });
-      setAvailableTags(Array.from(allTags));
-        
-      } catch (error) {
-        console.log('Backend not available, using local files only');
-        setLibraryFiles(localFiles);
-        
-        // Extract tags from local files only
-        const allTags = new Set();
-        localFiles.forEach(file => {
-          if (file.tags && Array.isArray(file.tags)) {
-            file.tags.forEach(tag => allTags.add(tag));
-          }
-        });
-        setAvailableTags(Array.from(allTags));
-      }
-    };
-    
-    loadFiles();
+    loadLibraryFiles();
+    loadLibraryStats();
   }, []);
 
 
 
 
 
-  // Save library files to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('datasenseLibraryFiles', JSON.stringify(libraryFiles));
-  }, [libraryFiles]);
+
 
   // Apply theme changes
   useEffect(() => {
@@ -2519,95 +2418,7 @@ const App = () => {
 
 
 
-  // Merge duplicate files by combining their data
-  const mergeDuplicateFiles = (existingFile, newFile) => {
-    // If files are identical, just return the existing one
-    if (JSON.stringify(existingFile.data) === JSON.stringify(newFile.data)) {
-      return existingFile;
-    }
-    
-    // If files have different data, merge them
-    const mergedData = [...(existingFile.data || []), ...(newFile.data || [])];
-    const mergedSummary = {
-      ...existingFile.summary,
-      totalRecords: (existingFile.summary?.totalRecords || 0) + (newFile.summary?.totalRecords || 0),
-      fileCount: Math.max(existingFile.summary?.fileCount || 1, newFile.summary?.fileCount || 1),
-      lastUpdate: new Date().toISOString()
-    };
-    
-    return {
-      ...existingFile,
-      data: mergedData,
-      summary: mergedSummary,
-      records: mergedData.length,
-      date: new Date().toISOString()
-    };
-  };
 
-
-
-  // File organization functions
-  const addTagToFile = (fileId, tag) => {
-    setLibraryFiles(prev => (prev || []).map(file => {
-      if (file.id === fileId) {
-        const updatedTags = file.tags ? [...file.tags, tag] : [tag];
-        return { ...file, tags: updatedTags };
-      }
-      return file;
-    }));
-  };
-
-  const removeTagFromFile = (fileId, tag) => {
-    setLibraryFiles(prev => (prev || []).map(file => {
-      if (file.id === fileId) {
-        const updatedTags = file.tags ? file.tags.filter(t => t !== tag) : [];
-        return { ...file, tags: updatedTags };
-      }
-      return file;
-    }));
-  };
-
-  const addNewTag = (tag) => {
-    if (!availableTags.includes(tag)) {
-      setAvailableTags(prev => [...prev, tag]);
-    }
-  };
-
-
-
-  // Filter files based on search and tags
-  const filteredLibraryFiles = (libraryFiles || []).filter(file => {
-    const matchesSearch = searchTerm === '' || 
-      file.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (file.tags && file.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())));
-    
-    const matchesTags = selectedTags.length === 0 || 
-      (file.tags && selectedTags.every(tag => file.tags.includes(tag)));
-    
-    return matchesSearch && matchesTags;
-  });
-
-  // Calculate storage statistics
-  const getStorageStats = () => {
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    
-    const oldFiles = (libraryFiles || []).filter(file => {
-      const fileDate = new Date(file.date);
-      return fileDate < oneYearAgo;
-    });
-    
-    const totalSize = (libraryFiles || []).reduce((sum, file) => sum + (file.records || 0), 0);
-    const oldSize = (oldFiles || []).reduce((sum, file) => sum + (file.records || 0), 0);
-    
-    return {
-      totalFiles: (libraryFiles || []).length,
-      oldFiles: oldFiles.length,
-      totalRecords: totalSize,
-      oldRecords: oldSize,
-      willBeCleaned: oldFiles.length > 0
-    };
-  };
 
   // Calculate sensor statistics
   const getSensorStats = () => {
@@ -2790,44 +2601,23 @@ const App = () => {
           // Initialize optimized data chunking
           initializeDataChunking(lastProcessedData.data);
           
-          // Save to library with duplicate detection
-          const newLibraryFile = {
-            id: `processed-${Date.now()}`,
-            name: lastProcessedData.filename,
-            date: new Date().toISOString(),
-            records: lastProcessedData.records_added,
-            size: 0,
-            processingDate: new Date().toLocaleString(),
-            status: 'processed',
-            source: 'processed',
+          // Save to library with database integration
+          const fileData = {
+            filename: lastProcessedData.filename,
+            file_size: lastProcessedData.data.length * 100, // Approximate size
+            records_count: lastProcessedData.data.length,
             tags: [],
-            data: lastProcessedData.data,
-            summary: lastProcessedData.summary
+            category: 'general',
+            description: `Processed ${lastProcessedData.filename}`
           };
-          
-          // Check for duplicates and add to library
-          setLibraryFiles(prev => {
-            const existingFiles = prev || [];
-            const duplicate = existingFiles.find(file => 
-              file.name === newLibraryFile.name && 
-              file.records === newLibraryFile.records
-            );
-            
-            if (duplicate) {
-              console.log(`Duplicate detected in library: ${newLibraryFile.name} - updating existing entry`);
-              return existingFiles.map(file => 
-                file.id === duplicate.id ? { ...file, ...newLibraryFile } : file
-              );
-            } else {
-              return [...existingFiles, newLibraryFile];
-            }
-          });
-          
-          // Update localStorage
-          const updatedFiles = [...(libraryFiles || []), newLibraryFile];
-          localStorage.setItem('datasenseLibraryFiles', JSON.stringify(updatedFiles));
-          
-          addLogEntry(`File ${lastProcessedData.filename} processed and added to library`, 'success');
+
+          try {
+            await addFileToLibrary(fileData);
+            addLogEntry(`File ${lastProcessedData.filename} processed and added to library`, 'success');
+          } catch (error) {
+            console.error('Error adding file to library:', error);
+            addLogEntry(`Error adding file to library: ${error.message}`, 'error');
+          }
         }
       }
 
@@ -3774,90 +3564,126 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 </div>
                 
                 <InteractiveControls>
-                  {/* Cleanup functionality removed - individual delete buttons now available */}
+                  {selectedFiles.length > 0 && (
+                    <ControlButton onClick={bulkDeleteFiles} style={{ background: '#f85149' }}>
+                      <FiTrash2 />
+                      Delete Selected ({selectedFiles.length})
+                    </ControlButton>
+                  )}
+                  <ControlButton onClick={handleSelectAll}>
+                    {selectedFiles.length === libraryFiles.length ? 'Deselect All' : 'Select All'}
+                  </ControlButton>
                 </InteractiveControls>
               </DashboardHeader>
 
-              {/* Search and Filter Section */}
+              {/* Enhanced Search and Filter Section */}
               <SearchFilterSection>
                 <SearchBox>
                   <FiSearch />
                   <input
                     type="text"
-                    placeholder={t('searchFiles')}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search files..."
+                    value={libraryFilters.search}
+                    onChange={(e) => handleFilterChange({ ...libraryFilters, search: e.target.value })}
                   />
                 </SearchBox>
                 
                 <FilterSection>
-                  <TagFilter>
-                    <label>Filter by tags:</label>
-                    <TagButtons>
-                      {availableTags.map(tag => (
-                        <TagButton
-                          key={tag}
-                          active={selectedTags.includes(tag)}
-                          onClick={() => {
-                            if (selectedTags.includes(tag)) {
-                              setSelectedTags(selectedTags.filter(t => t !== tag));
-                            } else {
-                              setSelectedTags([...selectedTags, tag]);
-                            }
-                          }}
-                        >
-                          {tag}
-                        </TagButton>
-                      ))}
-                    </TagButtons>
-                  </TagFilter>
+                  <select
+                    value={libraryFilters.category}
+                    onChange={(e) => handleFilterChange({ ...libraryFilters, category: e.target.value })}
+                    style={{ padding: '8px', borderRadius: '4px', background: '#21262d', color: '#fff', border: '1px solid #30363d' }}
+                  >
+                    <option value="">All Categories</option>
+                    {libraryCategories.map(category => (
+                      <option key={category} value={category}>{category.charAt(0).toUpperCase() + category.slice(1)}</option>
+                    ))}
+                  </select>
+                  
+                  <select
+                    value={libraryFilters.sortBy}
+                    onChange={(e) => handleFilterChange({ ...libraryFilters, sortBy: e.target.value })}
+                    style={{ padding: '8px', borderRadius: '4px', background: '#21262d', color: '#fff', border: '1px solid #30363d' }}
+                  >
+                    <option value="timestamp">Date</option>
+                    <option value="filename">Name</option>
+                    <option value="size">Size</option>
+                    <option value="records">Records</option>
+                  </select>
+                  
+                  <button
+                    onClick={() => handleFilterChange({ ...libraryFilters, sortOrder: libraryFilters.sortOrder === 'asc' ? 'desc' : 'asc' })}
+                    style={{ padding: '8px', borderRadius: '4px', background: '#21262d', color: '#fff', border: '1px solid #30363d' }}
+                  >
+                    {libraryFilters.sortOrder === 'asc' ? '↑' : '↓'}
+                  </button>
                 </FilterSection>
               </SearchFilterSection>
 
-              {/* Library Statistics */}
+              {/* Enhanced Library Statistics */}
               <LibraryStats>
                 <LibraryStatCard>
-                  <LibraryStatValue>{getStorageStats()?.totalFiles || '0'}</LibraryStatValue>
+                  <LibraryStatValue>{libraryStats.total_files || '0'}</LibraryStatValue>
                   <LibraryStatLabel>Total Files</LibraryStatLabel>
                 </LibraryStatCard>
                 <LibraryStatCard>
-                  <LibraryStatValue>{getStorageStats()?.totalRecords?.toLocaleString() || '0'}</LibraryStatValue>
+                  <LibraryStatValue>{libraryStats.total_records?.toLocaleString() || '0'}</LibraryStatValue>
                   <LibraryStatLabel>Total Records</LibraryStatLabel>
                 </LibraryStatCard>
                 <LibraryStatCard>
-                  <LibraryStatValue>{filteredLibraryFiles.length}</LibraryStatValue>
-                  <LibraryStatLabel>Filtered Results</LibraryStatLabel>
+                  <LibraryStatValue>{libraryStats.total_size_mb || '0'} MB</LibraryStatValue>
+                  <LibraryStatLabel>Total Size</LibraryStatLabel>
                 </LibraryStatCard>
                 <LibraryStatCard>
-                  <LibraryStatValue>{getStorageStats()?.oldFiles || '0'}</LibraryStatValue>
-                  <LibraryStatLabel>Old Files (1+ year)</LibraryStatLabel>
+                  <LibraryStatValue>{libraryStats.recent_files_30_days || '0'}</LibraryStatValue>
+                  <LibraryStatLabel>Recent (30 days)</LibraryStatLabel>
                 </LibraryStatCard>
               </LibraryStats>
 
+              {/* Loading State */}
+              {isLoadingLibrary && (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#8b949e' }}>
+                  <LoadingSpinner style={{ width: '32px', height: '32px', margin: '0 auto 16px' }} />
+                  Loading library files...
+                </div>
+              )}
+
               {/* Library Files Grid */}
               <LibraryGrid>
-                {filteredLibraryFiles.length === 0 ? (
+                {!isLoadingLibrary && libraryFiles.length === 0 ? (
                   <EmptyState>
                     <FiFolder />
                     <h3>No files found</h3>
                     <p>Upload and process RLD files to see them here</p>
                   </EmptyState>
                 ) : (
-                  filteredLibraryFiles.map((file) => (
+                  libraryFiles.map((file) => (
                     <LibraryCard key={file.id}>
                       <LibraryCardHeader>
+                        <input
+                          type="checkbox"
+                          checked={selectedFiles.includes(file.id)}
+                          onChange={() => handleFileSelection(file.id)}
+                          style={{ marginRight: '12px' }}
+                        />
                         <FileIcon>
                           <FiFile />
                         </FileIcon>
                         <FileInfo>
                           <FileName>{file.name}</FileName>
-                                                   <FileMeta>
-                           <span>{file.records} records</span>
-                           <span>•</span>
-                           <span>{file.processingDate || new Date(file.date).toLocaleDateString()}</span>
-                           <span>•</span>
-                           <span>{file.source === 'backend' ? 'Server' : 'Local'}</span>
-                         </FileMeta>
+                          <FileMeta>
+                            <span>{file.records?.toLocaleString()} records</span>
+                            <span>•</span>
+                            <span>{new Date(file.timestamp).toLocaleDateString()}</span>
+                            <span>•</span>
+                            <span>{file.category || 'general'}</span>
+                            {file.tags && file.tags.length > 0 && (
+                              <>
+                                <span>•</span>
+                                <span>{file.tags.join(', ')}</span>
+                              </>
+                            )}
+                          </FileMeta>
                         </FileInfo>
                         <FileActions>
                           <ActionButton
@@ -3868,6 +3694,18 @@ const generatePDFReport = (data, timeRange, fileName) => {
                             <FiTrash2 />
                           </ActionButton>
                           <ActionButton
+                            onClick={() => exportLibraryFile(file.id, 'json')}
+                            title="Export as JSON"
+                          >
+                            <FiDownload />
+                          </ActionButton>
+                          <ActionButton
+                            onClick={() => exportLibraryFile(file.id, 'csv')}
+                            title="Export as CSV"
+                          >
+                            <FiFileText />
+                          </ActionButton>
+                          <ActionButton
                             onClick={async () => await loadLibraryFile(file)}
                             title="Visualize this file"
                           >
@@ -3875,33 +3713,6 @@ const generatePDFReport = (data, timeRange, fileName) => {
                           </ActionButton>
                         </FileActions>
                       </LibraryCardHeader>
-                      
-                      {file.tags && file.tags.length > 0 && (
-                        <FileTags>
-                          {file.tags.map(tag => (
-                            <Tag key={tag}>
-                              {tag}
-                              <RemoveTag onClick={() => removeTagFromFile(file.id, tag)}>
-                                <FiX />
-                              </RemoveTag>
-                            </Tag>
-                          ))}
-                        </FileTags>
-                      )}
-                      
-                      <AddTagSection>
-                        <input
-                          type="text"
-                          placeholder="Add tag..."
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter' && e.target.value.trim()) {
-                              addTagToFile(file.id, e.target.value.trim());
-                              addNewTag(e.target.value.trim());
-                              e.target.value = '';
-                            }
-                          }}
-                        />
-                      </AddTagSection>
                     </LibraryCard>
                   ))
                 )}
