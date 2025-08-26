@@ -531,6 +531,65 @@ const PanelTitle = styled.h3`
   gap: 8px;
 `;
 
+// Loading overlay components
+const LoadingOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  color: white;
+`;
+
+const LoadingSpinner = styled.div`
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
+const ProgressBar = styled.div`
+  width: 300px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 10px 0;
+`;
+
+const ProgressFill = styled.div`
+  height: 100%;
+  background: #007bff;
+  width: ${props => props.progress}%;
+  transition: width 0.3s ease;
+`;
+
+const LoadingMessage = styled.div`
+  font-size: 16px;
+  margin-bottom: 10px;
+  text-align: center;
+`;
+
+const LoadingDetails = styled.div`
+  font-size: 14px;
+  opacity: 0.8;
+  text-align: center;
+`;
+
 const SensorGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -1563,6 +1622,10 @@ const App = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadMode, setUploadMode] = useState('txt'); // 'txt' or 'rld'
   const [uploadStatus, setUploadStatus] = useState({ loading: false, message: '', error: false });
+  
+  // Global loading state
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0, message: '' });
 
   // Cleanup modal state removed - using individual delete buttons instead
 
@@ -1574,7 +1637,12 @@ const App = () => {
         // Set connecting status while checking
         setBackendStatus('connecting');
         
-        const response = await fetch(`https://nrg-datasense-backend.onrender.com/health`, {
+        // Use localhost for development, deployed URL for production
+        const backendUrl = process.env.NODE_ENV === 'production' 
+          ? 'https://nrg-datasense-backend.onrender.com'
+          : 'http://localhost:5000';
+        
+        const response = await fetch(`${backendUrl}/health`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -1607,8 +1675,7 @@ const App = () => {
       }
     };
 
-    // Use permanent backend URL
-    console.log('🔍 Checking backend connection at: https://nrg-datasense-backend.onrender.com');
+    console.log('🔍 Checking backend connection...');
     checkBackendStatus();
     
     // Check more frequently initially, then every 30 seconds
@@ -2549,20 +2616,57 @@ const App = () => {
   };
 
   // File upload functions
-  const handleFileUpload = (event) => {
+  const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (files.length > 0) {
       // Limit to 10 files
       const limitedFiles = files.slice(0, 10);
       setUploadedFiles(limitedFiles);
-      setShowUploadModal(true);
+      // Automatically start processing
+      await processUploadedFiles();
+    }
+  };
+
+  // Auto-process single file with format detection
+  const autoProcessFile = async (file) => {
+    try {
+      // Auto-detect file format
+      const isRldFile = file.name.toLowerCase().endsWith('.rld');
+      const isTxtFile = file.name.toLowerCase().endsWith('.txt');
+      
+      if (!isRldFile && !isTxtFile) {
+        throw new Error('Unsupported file format. Please upload .rld or .txt files.');
+      }
+
+      let result;
+      
+      if (isTxtFile) {
+        // Process TXT file directly
+        setProcessingProgress({ current: 1, total: 1, message: `Processing ${file.name}...` });
+        result = await apiService.processTxtFile(file);
+      } else {
+        // Convert RLD to TXT first, then process
+        setProcessingProgress({ current: 1, total: 2, message: `Converting ${file.name} to TXT...` });
+        const conversionResult = await apiService.convertRldToTxt(file);
+        
+        setProcessingProgress({ current: 2, total: 2, message: `Processing converted ${file.name}...` });
+        // Create a new file object with the converted content
+        const txtFile = new File([conversionResult.txt_content], file.name.replace('.rld', '.txt'), { type: 'text/plain' });
+        result = await apiService.processTxtFile(txtFile);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Auto-processing error:', error);
+      throw error;
     }
   };
 
   const processUploadedFiles = async () => {
     if (uploadedFiles.length === 0) return;
 
-    setUploadStatus({ loading: true, message: 'Processing files...', error: false });
+    setIsProcessing(true);
+    setProcessingProgress({ current: 0, total: uploadedFiles.length, message: 'Starting file processing...' });
 
     try {
       let processedCount = 0;
@@ -2570,44 +2674,19 @@ const App = () => {
       const errors = [];
       let lastProcessedData = null;
 
-      for (const file of uploadedFiles) {
+      for (let i = 0; i < uploadedFiles.length; i++) {
+        const file = uploadedFiles[i];
         try {
-          // Auto-detect file format
-          const isRldFile = file.name.toLowerCase().endsWith('.rld');
-          const isTxtFile = file.name.toLowerCase().endsWith('.txt');
-          
-          if (!isRldFile && !isTxtFile) {
-            throw new Error('Unsupported file format. Please upload .rld or .txt files.');
-          }
+          setProcessingProgress({ 
+            current: i + 1, 
+            total: uploadedFiles.length, 
+            message: `Processing ${file.name}...` 
+          });
 
-          setUploadStatus({ loading: true, message: `Processing ${file.name}...`, error: false });
-
-          let result;
-          
-          if (isTxtFile) {
-            // Process TXT file directly with timeout
-            result = await Promise.race([
-              apiService.processTxtFile(file),
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Processing timeout - file too large')), 300000) // 5 minutes
-              )
-            ]);
-            lastProcessedData = result;
-          } else {
-            // Convert RLD to TXT first, then process
-            const conversionResult = await apiService.convertRldToTxt(file);
-            // Create a new file object with the converted content
-            const txtFile = new File([conversionResult.txt_content], file.name.replace('.rld', '.txt'), { type: 'text/plain' });
-            result = await Promise.race([
-              apiService.processTxtFile(txtFile),
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Processing timeout - file too large')), 300000) // 5 minutes
-              )
-            ]);
-            lastProcessedData = result;
-          }
-          
+          const result = await autoProcessFile(file);
+          lastProcessedData = result;
           processedCount++;
+          
         } catch (error) {
           errorCount++;
           errors.push(`${file.name}: ${error.message}`);
@@ -2625,61 +2704,68 @@ const App = () => {
         error: errorCount > 0 
       });
 
+      // Processing completed
+      setIsProcessing(false);
+      
       // Auto-display the last processed file data and save to library
       if (processedCount > 0 && lastProcessedData) {
-        setTimeout(() => {
-          // Load the processed data into the dashboard
-          if (lastProcessedData.data && lastProcessedData.summary) {
-            setRealTimeData(lastProcessedData.data);
-            setSummary(lastProcessedData.summary);
-            setHasData(true);
-            setTimeIndex(0);
-            setCurrentView('dashboard');
+        // Load the processed data into the dashboard immediately
+        if (lastProcessedData.data && lastProcessedData.summary) {
+          setRealTimeData(lastProcessedData.data);
+          setSummary(lastProcessedData.summary);
+          setHasData(true);
+          setTimeIndex(0);
+          setCurrentView('dashboard');
+          
+          // Save to library with duplicate detection
+          const newLibraryFile = {
+            id: `processed-${Date.now()}`,
+            name: lastProcessedData.filename,
+            date: new Date().toISOString(),
+            records: lastProcessedData.records_added,
+            size: 0,
+            processingDate: new Date().toLocaleString(),
+            status: 'processed',
+            source: 'processed',
+            tags: [],
+            data: lastProcessedData.data,
+            summary: lastProcessedData.summary
+          };
+          
+          // Check for duplicates and add to library
+          setLibraryFiles(prev => {
+            const existingFiles = prev || [];
+            const duplicate = existingFiles.find(file => 
+              file.name === newLibraryFile.name && 
+              file.records === newLibraryFile.records
+            );
             
-            // Save to library with duplicate detection
-            const newLibraryFile = {
-              id: `processed-${Date.now()}`,
-              name: lastProcessedData.filename,
-              date: new Date().toISOString(),
-              records: lastProcessedData.records_added,
-              size: 0,
-              processingDate: new Date().toLocaleString(),
-              status: 'processed',
-              source: 'processed',
-              tags: [],
-              data: lastProcessedData.data,
-              summary: lastProcessedData.summary
-            };
-            
-            // Check for duplicates and add to library
-            setLibraryFiles(prev => {
-              const existingFiles = prev || [];
-              const duplicate = existingFiles.find(file => 
-                file.name === newLibraryFile.name && 
-                file.records === newLibraryFile.records
+            if (duplicate) {
+              console.log(`Duplicate detected in library: ${newLibraryFile.name} - updating existing entry`);
+              return existingFiles.map(file => 
+                file.id === duplicate.id ? { ...file, ...newLibraryFile } : file
               );
-              
-              if (duplicate) {
-                console.log(`Duplicate detected in library: ${newLibraryFile.name} - updating existing entry`);
-                return existingFiles.map(file => 
-                  file.id === duplicate.id ? { ...file, ...newLibraryFile } : file
-                );
-              } else {
-                return [...existingFiles, newLibraryFile];
-              }
-            });
-            
-            addLogEntry(`Auto-displayed and saved processed data: ${lastProcessedData.summary.fileCount} files, ${lastProcessedData.summary.totalRecords} records`, 'success');
-          }
-        }, 1000);
+            } else {
+              return [...existingFiles, newLibraryFile];
+            }
+          });
+          
+          // Update localStorage
+          const updatedFiles = [...(libraryFiles || []), newLibraryFile];
+          localStorage.setItem('datasenseLibraryFiles', JSON.stringify(updatedFiles));
+          
+          addLogEntry(`File ${lastProcessedData.filename} processed and added to library`, 'success');
+        }
       }
 
+      // Close upload modal
+      setShowUploadModal(false);
+      setUploadedFiles([]);
+
     } catch (error) {
-      setUploadStatus({ 
-        loading: false, 
-        message: error.message || 'Upload failed', 
-        error: true 
-      });
+      console.error('Error processing files:', error);
+      setIsProcessing(false);
+      alert(`Processing failed: ${error.message}`);
     }
   };
 
@@ -2814,6 +2900,23 @@ const generatePDFReport = (data, timeRange, fileName) => {
 
   return (
     <AppContainer>
+      {/* Global Loading Overlay */}
+      {isProcessing && (
+        <LoadingOverlay>
+          <LoadingSpinner />
+          <LoadingMessage>{processingProgress.message}</LoadingMessage>
+          {processingProgress.total > 1 && (
+            <>
+              <ProgressBar>
+                <ProgressFill progress={(processingProgress.current / processingProgress.total) * 100} />
+              </ProgressBar>
+              <LoadingDetails>
+                Processing {processingProgress.current} of {processingProgress.total} files...
+              </LoadingDetails>
+            </>
+          )}
+        </LoadingOverlay>
+      )}
       <Header>
         <HeaderLeft>
           {/* PNG Logo */}
@@ -3831,106 +3934,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
 
 
 
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <>
-          <ModalOverlay
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={closeUploadModal}
-          />
-          <UploadModal
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          >
-            <ModalTitle>
-              <FiUpload />
-              Upload File
-            </ModalTitle>
-            
-            <ModalContent>
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: '#fff' }}>
-                  Files ({uploadedFiles.length} selected):
-                </label>
-                <div style={{ 
-                  maxHeight: '150px', 
-                  overflowY: 'auto', 
-                  background: '#0d1117', 
-                  border: '1px solid #30363d', 
-                  borderRadius: '4px', 
-                  padding: '10px',
-                  marginBottom: '15px'
-                }}>
-                  {uploadedFiles.map((file, index) => (
-                    <div key={index} style={{ 
-                      padding: '5px 0', 
-                      borderBottom: index < uploadedFiles.length - 1 ? '1px solid #30363d' : 'none',
-                      fontSize: '12px',
-                      color: '#8b949e'
-                    }}>
-                      {file.name} ({(file.size / 1024).toFixed(1)} KB)
-                    </div>
-                  ))}
-                </div>
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', color: '#fff' }}>
-                    Processing Mode:
-                  </label>
-                  <select
-                    value={uploadMode}
-                    onChange={(e) => setUploadMode(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      background: '#21262d',
-                      border: '1px solid #30363d',
-                      borderRadius: '4px',
-                      color: '#fff'
-                    }}
-                  >
-                    <option value="txt">Process TXT files directly</option>
-                    <option value="rld">Convert RLD to TXT</option>
-                  </select>
-                </div>
-                
-                {uploadStatus.message && (
-                  <div style={{
-                    padding: '10px',
-                    borderRadius: '4px',
-                    backgroundColor: uploadStatus.error ? '#21262d' : '#0d1117',
-                    border: `1px solid ${uploadStatus.error ? '#f85149' : '#1f6feb'}`,
-                    color: uploadStatus.error ? '#f85149' : '#1f6feb',
-                    marginBottom: '15px'
-                  }}>
-                    {uploadStatus.message}
-                  </div>
-                )}
-              </div>
-            </ModalContent>
-            
-            <ModalActions>
-              <ControlButton
-                onClick={closeUploadModal}
-                disabled={uploadStatus.loading}
-                style={{ background: '#30363d' }}
-              >
-                Cancel
-              </ControlButton>
-              <ControlButton
-                onClick={processUploadedFiles}
-                disabled={uploadedFiles.length === 0 || uploadStatus.loading}
-                style={{ background: uploadStatus.loading ? '#30363d' : '#1f6feb' }}
-              >
-                {uploadStatus.loading ? 'Processing...' : `Process ${uploadedFiles.length} Files`}
-              </ControlButton>
-            </ModalActions>
-          </UploadModal>
-        </>
-      )}
+
 
       {/* Cleanup Modal removed - using individual delete buttons instead */}
 
