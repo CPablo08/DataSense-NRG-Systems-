@@ -793,7 +793,7 @@ const SummaryStatValue = styled.div`
   margin-bottom: 5px;
 `;
 
-const StatLabel = styled.div`
+const SummaryStatLabel = styled.div`
   font-size: 12px;
   color: #8b949e;
 `;
@@ -3956,27 +3956,27 @@ const generatePDFReport = (data, timeRange, fileName) => {
               <GraphStats style={{ marginBottom: '20px' }}>
                 <StatCard>
                                       <SummaryStatValue>{realTimeData.length.toLocaleString()}</SummaryStatValue>
-                  <StatLabel>Total Data Points</StatLabel>
+                                      <SummaryStatLabel>Total Data Points</SummaryStatLabel>
                 </StatCard>
                 <StatCard>
                                       <SummaryStatValue>{realTimeData.length > 0 ? new Date(realTimeData[0].timestamp).toLocaleDateString() : 'N/A'}</SummaryStatValue>
-                  <StatLabel>Start Date</StatLabel>
+                                      <SummaryStatLabel>Start Date</SummaryStatLabel>
                 </StatCard>
                 <StatCard>
                                       <SummaryStatValue>{realTimeData.length > 0 ? new Date(realTimeData[realTimeData.length - 1].timestamp).toLocaleDateString() : 'N/A'}</SummaryStatValue>
-                  <StatLabel>End Date</StatLabel>
+                                      <SummaryStatLabel>End Date</SummaryStatLabel>
                 </StatCard>
                 <StatCard>
                                       <SummaryStatValue>{realTimeData.length > 0 ? `${Math.round((new Date(realTimeData[realTimeData.length - 1].timestamp) - new Date(realTimeData[0].timestamp)) / (1000 * 60 * 60))}h` : 'N/A'}</SummaryStatValue>
-                  <StatLabel>Duration</StatLabel>
+                                      <SummaryStatLabel>Duration</SummaryStatLabel>
                 </StatCard>
                 <StatCard>
                                       <SummaryStatValue>{realTimeData.length > 0 ? `${Math.round((new Date(realTimeData[realTimeData.length - 1].timestamp) - new Date(realTimeData[0].timestamp)) / (1000 * 60))} min` : 'N/A'}</SummaryStatValue>
-                  <StatLabel>Total Minutes</StatLabel>
+                                      <SummaryStatLabel>Total Minutes</SummaryStatLabel>
                 </StatCard>
                 <StatCard>
                                       <SummaryStatValue>{realTimeData.length > 0 ? `${(realTimeData.length / 60).toFixed(1)}` : 'N/A'}</SummaryStatValue>
-                  <StatLabel>Readings/Hour</StatLabel>
+                                      <SummaryStatLabel>Readings/Hour</SummaryStatLabel>
                 </StatCard>
               </GraphStats>
 
