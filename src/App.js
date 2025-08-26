@@ -412,6 +412,53 @@ const SummaryCards = styled.div`
   margin-bottom: 20px;
 `;
 
+const SitePropertiesCard = styled.div`
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    border-color: #1f6feb;
+  }
+`;
+
+const SitePropertiesTitle = styled.h3`
+  color: #fff;
+  margin: 0 0 15px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+`;
+
+const SitePropertiesContent = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+`;
+
+const SiteProperty = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #30363d;
+`;
+
+const PropertyLabel = styled.span`
+  color: #8b949e;
+  font-size: 14px;
+`;
+
+const PropertyValue = styled.span`
+  color: #fff;
+  font-weight: 500;
+  font-size: 14px;
+`;
+
 const SummaryCard = styled.div`
   background: #21262d;
   padding: 20px;
@@ -1855,7 +1902,10 @@ const App = () => {
       'Ch25_Analog_0.00m_N_Avg_W/m2': 'Solar Radiation 2 (Avg)',
       'Ch25_Analog_0.00m_N_Max_W/m2': 'Solar Radiation 2 (Max)',
       'Ch26_Analog_0.00m_N_Avg_W/m2': 'Solar Radiation 3 (Avg)',
-      'Ch26_Analog_0.00m_N_Max_W/m2': 'Solar Radiation 3 (Max)'
+      'Ch26_Analog_0.00m_N_Max_W/m2': 'Solar Radiation 3 (Max)',
+      'Solar_Irradiance_1': language === 'en' ? 'Solar Irradiance 1' : 'Irradiancia Solar 1',
+      'Solar_Irradiance_2': language === 'en' ? 'Solar Irradiance 2' : 'Irradiancia Solar 2',
+      'Solar_Irradiance_3': language === 'en' ? 'Solar Irradiance 3' : 'Irradiancia Solar 3'
     };
     return names[sensorName] || sensorName;
   };
@@ -2832,6 +2882,54 @@ const generatePDFReport = (data, timeRange, fileName) => {
 
                 </InteractiveControls>
               </DashboardHeader>
+
+              {/* Site Properties */}
+              {summary?.siteProperties && (
+                <SitePropertiesCard>
+                  <SitePropertiesTitle>
+                    <FiGlobe />
+                    Site Information
+                  </SitePropertiesTitle>
+                  <SitePropertiesContent>
+                    {summary.siteProperties['Site Number'] && (
+                      <SiteProperty>
+                        <PropertyLabel>Site Number:</PropertyLabel>
+                        <PropertyValue>{summary.siteProperties['Site Number']}</PropertyValue>
+                      </SiteProperty>
+                    )}
+                    {summary.siteProperties['Location'] && (
+                      <SiteProperty>
+                        <PropertyLabel>Location:</PropertyLabel>
+                        <PropertyValue>{summary.siteProperties['Location']}</PropertyValue>
+                      </SiteProperty>
+                    )}
+                    {summary.siteProperties['Latitude'] && (
+                      <SiteProperty>
+                        <PropertyLabel>Latitude:</PropertyLabel>
+                        <PropertyValue>{summary.siteProperties['Latitude']}</PropertyValue>
+                      </SiteProperty>
+                    )}
+                    {summary.siteProperties['Longitude'] && (
+                      <SiteProperty>
+                        <PropertyLabel>Longitude:</PropertyLabel>
+                        <PropertyValue>{summary.siteProperties['Longitude']}</PropertyValue>
+                      </SiteProperty>
+                    )}
+                    {summary.siteProperties['Elevation'] && (
+                      <SiteProperty>
+                        <PropertyLabel>Elevation:</PropertyLabel>
+                        <PropertyValue>{summary.siteProperties['Elevation']} m</PropertyValue>
+                      </SiteProperty>
+                    )}
+                    {summary.siteProperties['Time Zone'] && (
+                      <SiteProperty>
+                        <PropertyLabel>Time Zone:</PropertyLabel>
+                        <PropertyValue>{summary.siteProperties['Time Zone']}</PropertyValue>
+                      </SiteProperty>
+                    )}
+                  </SitePropertiesContent>
+                </SitePropertiesCard>
+              )}
 
               <SummaryCards>
                 <SummaryCard>

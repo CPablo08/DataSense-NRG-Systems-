@@ -116,7 +116,7 @@ def convert_rld_to_txt(rld_file_path: str, output_folder: str = "./converted") -
         return None
 
 def process_txt_file(txt_file: str) -> List[Dict]:
-    """Process TXT file and extract sensor data"""
+    """Process SymphoniePRO TXT file and extract sensor data"""
     try:
         with open(txt_file, 'r') as f:
             content = f.read()
@@ -125,23 +125,54 @@ def process_txt_file(txt_file: str) -> List[Dict]:
         lines = content.split('\n')
         processed_data = []
         
-        # Find data section - look for lines that start with date format (YYYY-MM-DD HH:MM:SS)
-        data_start = -1
-        headers = []
-        
+        # Find the header line that contains "Timestamp"
+        header_line_index = -1
         for i, line in enumerate(lines):
-            line = line.strip()
-            # Check if line starts with a date format (YYYY-MM-DD HH:MM:SS)
-            if line and len(line) >= 19 and line[4] == '-' and line[7] == '-' and line[10] == ' ' and line[13] == ':' and line[16] == ':':
-                data_start = i
+            if "Timestamp" in line:
+                header_line_index = i
                 break
         
-        if data_start == -1:
-            logger.warning(f"No data section found in {txt_file}")
+        if header_line_index == -1:
+            logger.warning(f"No header line found in {txt_file}")
             return []
         
-        # Process data lines
-        for i in range(data_start, len(lines)):
+        # Parse the header line to get column names
+        header_line = lines[header_line_index]
+        headers = header_line.split('\t')
+        
+        # Map column indices to sensor names
+        sensor_mapping = {}
+        for i, header in enumerate(headers):
+            header = header.strip()
+            if "Ch1_Anem" in header and "Avg" in header:
+                sensor_mapping["NRG_40C_Anem"] = i  # Wind Speed
+            elif "Ch13_Vane" in header and "Avg" in header:
+                sensor_mapping["NRG_200M_Vane"] = i  # Wind Direction
+            elif "Ch14_Analog" in header and "Avg" in header:
+                sensor_mapping["NRG_T60_Temp"] = i  # Temperature
+            elif "Ch16_Analog" in header and "Avg" in header:
+                sensor_mapping["NRG_RH5X_Humi"] = i  # Humidity
+            elif "Ch17_Analog" in header and "Avg" in header:
+                sensor_mapping["NRG_BP60_Baro"] = i  # Pressure
+            elif "Ch20_Analog" in header and "Avg" in header:
+                sensor_mapping["Rain_Gauge"] = i  # Rainfall
+            elif "Ch21_Therm" in header and "Avg" in header:
+                sensor_mapping["NRG_PVT1_PV_Temp"] = i  # PV Temperature
+            elif "Ch22_Analog" in header and "Avg" in header:
+                sensor_mapping["PSM_c_Si_Isc_Soil"] = i  # Solar Current Soil
+            elif "Ch23_Analog" in header and "Avg" in header:
+                sensor_mapping["PSM_c_Si_Isc_Clean"] = i  # Solar Current Clean
+            elif "Ch24_Analog" in header and "Avg" in header:
+                sensor_mapping["Solar_Irradiance_1"] = i  # Solar Irradiance 1
+            elif "Ch25_Analog" in header and "Avg" in header:
+                sensor_mapping["Solar_Irradiance_2"] = i  # Solar Irradiance 2
+            elif "Ch26_Analog" in header and "Avg" in header:
+                sensor_mapping["Solar_Irradiance_3"] = i  # Solar Irradiance 3
+        
+        logger.info(f"Found sensor mapping: {sensor_mapping}")
+        
+        # Process data lines starting after the header
+        for i in range(header_line_index + 1, len(lines)):
             line = lines[i].strip()
             if not line or line.startswith('#'):
                 continue
@@ -149,30 +180,42 @@ def process_txt_file(txt_file: str) -> List[Dict]:
             try:
                 # Parse tab-separated values
                 values = line.split('\t')
-                if len(values) < 5:  # Need at least timestamp and a few sensor values
+                if len(values) < 2:  # Need at least timestamp
                     continue
                 
                 # Extract timestamp
-                timestamp = values[0] if values[0] else datetime.now().isoformat()
+                timestamp = values[0].strip()
+                if not timestamp or len(timestamp) < 19:
+                    continue
                 
-                # Create data record - map values based on the actual file structure
-                # Based on the file content, the order appears to be:
-                # timestamp, wind_speed, wind_direction, temp, humidity, pressure, etc.
+                # Create data record with mapped sensor values
                 record = {
                     "time": timestamp,
                     "timestamp": timestamp,
-                    "filename": os.path.basename(txt_file),
-                    "NRG_40C_Anem": float(values[1]) if len(values) > 1 and values[1].strip() else 0,
-                    "NRG_200M_Vane": float(values[2]) if len(values) > 2 and values[2].strip() else 0,
-                    "NRG_T60_Temp": float(values[3]) if len(values) > 3 and values[3].strip() else 0,
-                    "NRG_RH5X_Humi": float(values[4]) if len(values) > 4 and values[4].strip() else 0,
-                    "NRG_BP60_Baro": float(values[5]) if len(values) > 5 and values[5].strip() else 0,
-                    "Rain_Gauge": float(values[6]) if len(values) > 6 and values[6].strip() else 0,
-                    "NRG_PVT1_PV_Temp": float(values[7]) if len(values) > 7 and values[7].strip() else 0,
-                    "PSM_c_Si_Isc_Soil": float(values[8]) if len(values) > 8 and values[8].strip() else 0,
-                    "PSM_c_Si_Isc_Clean": float(values[9]) if len(values) > 9 and values[9].strip() else 0,
-                    "Average_12V_Battery": float(values[10]) if len(values) > 10 and values[10].strip() else 0
+                    "filename": os.path.basename(txt_file)
                 }
+                
+                # Add sensor values based on mapping
+                for sensor_name, column_index in sensor_mapping.items():
+                    if column_index < len(values):
+                        try:
+                            value = float(values[column_index].strip()) if values[column_index].strip() else 0
+                            record[sensor_name] = value
+                        except (ValueError, IndexError):
+                            record[sensor_name] = 0
+                    else:
+                        record[sensor_name] = 0
+                
+                # Add default values for missing sensors
+                default_sensors = [
+                    "NRG_40C_Anem", "NRG_200M_Vane", "NRG_T60_Temp", "NRG_RH5X_Humi",
+                    "NRG_BP60_Baro", "Rain_Gauge", "NRG_PVT1_PV_Temp", 
+                    "PSM_c_Si_Isc_Soil", "PSM_c_Si_Isc_Clean", "Average_12V_Battery"
+                ]
+                
+                for sensor in default_sensors:
+                    if sensor not in record:
+                        record[sensor] = 0
                 
                 processed_data.append(record)
                 
@@ -186,6 +229,31 @@ def process_txt_file(txt_file: str) -> List[Dict]:
     except Exception as e:
         logger.error(f"Error processing {txt_file}: {e}")
         return []
+
+def extract_site_properties(txt_file: str) -> Dict:
+    """Extract site properties from SymphoniePRO TXT file header"""
+    try:
+        with open(txt_file, 'r') as f:
+            content = f.read()
+        
+        lines = content.split('\n')
+        site_properties = {}
+        
+        for line in lines:
+            line = line.strip()
+            if ':' in line and not line.startswith('#'):
+                parts = line.split(':', 1)
+                if len(parts) == 2:
+                    key = parts[0].strip()
+                    value = parts[1].strip()
+                    
+                    if key in ['Site Number', 'Location', 'Latitude', 'Longitude', 'Elevation', 'Time Zone']:
+                        site_properties[key] = value
+        
+        return site_properties
+    except Exception as e:
+        logger.error(f"Error extracting site properties: {e}")
+        return {}
 
 def load_data() -> List[Dict]:
     """Load processed data from file"""
@@ -382,12 +450,16 @@ async def process_txt_file_upload(file: UploadFile = File(...), db: Session = De
             "timestamp": datetime.now().isoformat()
         })
         
+        # Extract site properties
+        site_properties = extract_site_properties(upload_path)
+        
         # Create summary for the processed data
         summary = {
             "totalRecords": len(processed_data),
             "sensorCount": len(new_data[0]) if new_data else 0,
             "fileCount": 1,
-            "lastUpdate": datetime.now().isoformat()
+            "lastUpdate": datetime.now().isoformat(),
+            "siteProperties": site_properties
         }
         
         return {
@@ -395,7 +467,8 @@ async def process_txt_file_upload(file: UploadFile = File(...), db: Session = De
             "records_added": len(new_data),
             "filename": file.filename,
             "data": new_data,
-            "summary": summary
+            "summary": summary,
+            "siteProperties": site_properties
         }
         
     except Exception as e:
