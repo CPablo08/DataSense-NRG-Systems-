@@ -630,7 +630,7 @@ const DataStats = styled.div`
   align-items: center;
 `;
 
-const StatItem = styled.div`
+const DataStatItem = styled.div`
   text-align: center;
 `;
 
@@ -1116,7 +1116,7 @@ const StatisticsGrid = styled.div`
   gap: 15px;
 `;
 
-const StatItem = styled.div`
+const StatisticsItem = styled.div`
   background: #161b22;
   border: 1px solid #30363d;
   border-radius: 8px;
@@ -3333,26 +3333,26 @@ const generatePDFReport = (data, timeRange, fileName) => {
               {/* Data Performance Stats */}
               {hasData && realTimeData && realTimeData.length > 0 && (
                 <DataStats>
-                  <StatItem>
+                  <DataStatItem>
                     <DataStatValue>{filteredData.length.toLocaleString()}</DataStatValue>
                     <StatLabel>Loaded Records</StatLabel>
-                  </StatItem>
-                  <StatItem>
+                  </DataStatItem>
+                  <DataStatItem>
                     <DataStatValue>{realTimeData.length.toLocaleString()}</DataStatValue>
                     <StatLabel>Total Records</StatLabel>
-                  </StatItem>
-                  <StatItem>
+                  </DataStatItem>
+                  <DataStatItem>
                     <DataStatValue>{Math.round((filteredData.length / realTimeData.length) * 100)}%</DataStatValue>
                     <StatLabel>Data Loaded</StatLabel>
-                  </StatItem>
-                  <StatItem>
+                  </DataStatItem>
+                  <DataStatItem>
                     <DataStatValue>{dataChunkSize}</DataStatValue>
                     <StatLabel>Chunk Size</StatLabel>
-                  </StatItem>
-                  <StatItem>
+                  </DataStatItem>
+                  <DataStatItem>
                     <DataStatValue>{currentChunkIndex + 1}</DataStatValue>
                     <StatLabel>Current Chunk</StatLabel>
-                  </StatItem>
+                  </DataStatItem>
                 </DataStats>
               )}
 
@@ -3610,7 +3610,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                       {getSensorStats() ? (
                         <StatisticsGrid>
                           {Object.entries(getSensorStats()).map(([sensor, data]) => (
-                            <StatItem key={sensor}>
+                            <StatisticsItem key={sensor}>
                               <StatHeader>
                                 <StatName>{getSensorDisplayName(sensor)}</StatName>
                                 <StatUnit>{data.unit}</StatUnit>
