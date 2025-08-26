@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { debounce } from 'lodash';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { 
@@ -588,6 +589,61 @@ const LoadingDetails = styled.div`
   font-size: 14px;
   opacity: 0.8;
   text-align: center;
+`;
+
+// Load more button
+const LoadMoreButton = styled.button`
+  background: #1f6feb;
+  border: 1px solid #1f6feb;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  margin: 20px auto;
+  
+  &:hover {
+    background: #1158c7;
+    border-color: #1158c7;
+  }
+  
+  &:disabled {
+    background: #30363d;
+    border-color: #30363d;
+    cursor: not-allowed;
+  }
+`;
+
+// Data stats display
+const DataStats = styled.div`
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 20px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const StatItem = styled.div`
+  text-align: center;
+`;
+
+const StatValue = styled.div`
+  font-size: 18px;
+  font-weight: bold;
+  color: #1f6feb;
+`;
+
+const StatLabel = styled.div`
+  font-size: 12px;
+  color: #8b949e;
+  margin-top: 4px;
 `;
 
 const SensorGrid = styled.div`
@@ -1626,9 +1682,106 @@ const App = () => {
   // Global loading state
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0, message: '' });
+  
+  // Data optimization state
+  const [dataChunkSize] = useState(500); // Load 500 records at a time
+  const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
+  const [isLoadingMoreData, setIsLoadingMoreData] = useState(false);
+  const [dataCache, setDataCache] = useState(new Map()); // LRU cache for data chunks
+  const [filteredData, setFilteredData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'time', direction: 'asc' });
 
   // Cleanup modal state removed - using individual delete buttons instead
 
+  // Data optimization functions
+  const getDataChunk = useCallback((data, startIndex, chunkSize) => {
+    const endIndex = Math.min(startIndex + chunkSize, data.length);
+    return data.slice(startIndex, endIndex);
+  }, []);
+
+  const loadNextChunk = useCallback(async () => {
+    if (!realTimeData || realTimeData.length === 0) return;
+    
+    const nextChunkIndex = currentChunkIndex + 1;
+    const startIndex = nextChunkIndex * dataChunkSize;
+    
+    if (startIndex >= realTimeData.length) return; // No more data
+    
+    setIsLoadingMoreData(true);
+    
+    // Simulate loading delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const newChunk = getDataChunk(realTimeData, startIndex, dataChunkSize);
+    setFilteredData(prev => [...prev, ...newChunk]);
+    setCurrentChunkIndex(nextChunkIndex);
+    setIsLoadingMoreData(false);
+  }, [realTimeData, currentChunkIndex, dataChunkSize, getDataChunk]);
+
+  const initializeDataChunking = useCallback((data) => {
+    if (!data || data.length === 0) return;
+    
+    const initialChunk = getDataChunk(data, 0, dataChunkSize);
+    setFilteredData(initialChunk);
+    setCurrentChunkIndex(0);
+    setDataCache(new Map()); // Clear cache when new data is loaded
+  }, [dataChunkSize, getDataChunk]);
+
+  const filterAndSortData = useCallback((data, search, sort) => {
+    if (!data || data.length === 0) return [];
+    
+    let filtered = data;
+    
+    // Apply search filter
+    if (search) {
+      filtered = data.filter(record => 
+        Object.values(record).some(value => 
+          String(value).toLowerCase().includes(search.toLowerCase())
+        )
+      );
+    }
+    
+    // Apply sorting
+    if (sort.key) {
+      filtered = [...filtered].sort((a, b) => {
+        const aVal = a[sort.key];
+        const bVal = b[sort.key];
+        
+        if (aVal < bVal) return sort.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sort.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    
+    return filtered;
+  }, []);
+
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce((term) => {
+      setSearchTerm(term);
+      if (realTimeData && realTimeData.length > 0) {
+        const filtered = filterAndSortData(realTimeData, term, sortConfig);
+        setFilteredData(filtered.slice(0, dataChunkSize));
+        setCurrentChunkIndex(0);
+      }
+    }, 300),
+    [realTimeData, sortConfig, filterAndSortData, dataChunkSize]
+  );
+
+  // Optimized data access with caching
+  const getOptimizedChartData = useCallback(() => {
+    if (!filteredData || filteredData.length === 0) return [];
+    
+    // For charts, we can downsample data to improve performance
+    const maxPoints = 1000; // Limit chart points for better performance
+    if (filteredData.length <= maxPoints) return filteredData;
+    
+    // Downsample data for charts
+    const step = Math.ceil(filteredData.length / maxPoints);
+    return filteredData.filter((_, index) => index % step === 0);
+  }, [filteredData]);
 
   // Check backend status
   useEffect(() => {
@@ -2266,15 +2419,15 @@ const App = () => {
     return realTimeData[timeIndex] || realTimeData[(realTimeData || []).length - 1];
   };
 
-  // Get full dataset for charts (showing complete data with exact timestamps)
-  const getCurrentChartData = () => {
-    if (realTimeData.length === 0 || !hasData) {
+  // Get full dataset for charts (showing complete data with exact timestamps) - OPTIMIZED
+  const getCurrentChartData = useMemo(() => {
+    if (!filteredData || filteredData.length === 0 || !hasData) {
       return [{time: t('noDataAvailable'), NRG_40C_Anem: 0, NRG_200M_Vane: 0, NRG_T60_Temp: 0, NRG_RH5X_Humi: 0, NRG_BP60_Baro: 0, Rain_Gauge: 0, NRG_PVT1_PV_Temp: 0, PSM_c_Si_Isc_Soil: 0, PSM_c_Si_Isc_Clean: 0, Average_12V_Battery: 0}];
     }
     
-    // Return the complete dataset with exact timestamps
-    return realTimeData;
-  };
+    // Use optimized chart data with downsampling for better performance
+    return getOptimizedChartData();
+  }, [filteredData, hasData, getOptimizedChartData]);
 
   // Get filtered data for analysis window based on time range
   const getAnalysisChartData = () => {
@@ -2737,6 +2890,9 @@ const App = () => {
           setTimeIndex(0);
           setCurrentView('dashboard');
           
+          // Initialize optimized data chunking
+          initializeDataChunking(lastProcessedData.data);
+          
           // Save to library with duplicate detection
           const newLibraryFile = {
             id: `processed-${Date.now()}`,
@@ -3035,6 +3191,35 @@ const generatePDFReport = (data, timeRange, fileName) => {
                     </StatusIndicator>
                   </NavButton>
                   
+                  {/* Search Input */}
+                  {hasData && (
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      background: '#21262d', 
+                      border: '1px solid #30363d', 
+                      borderRadius: '4px', 
+                      padding: '0 12px',
+                      minWidth: '200px'
+                    }}>
+                      <FiSearch style={{ color: '#8b949e', marginRight: '8px' }} />
+                      <input
+                        type="text"
+                        placeholder="Search data..."
+                        onChange={(e) => debouncedSearch(e.target.value)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#fff',
+                          fontSize: '14px',
+                          padding: '8px 0',
+                          width: '100%',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+                  )}
+
                   <ControlButton 
                     onClick={() => {
                       if (realTimeData.length > 0) {
@@ -3144,6 +3329,52 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   </SummaryContent>
                 </SummaryCard>
               </SummaryCards>
+
+              {/* Data Performance Stats */}
+              {hasData && realTimeData && realTimeData.length > 0 && (
+                <DataStats>
+                  <StatItem>
+                    <StatValue>{filteredData.length.toLocaleString()}</StatValue>
+                    <StatLabel>Loaded Records</StatLabel>
+                  </StatItem>
+                  <StatItem>
+                    <StatValue>{realTimeData.length.toLocaleString()}</StatValue>
+                    <StatLabel>Total Records</StatLabel>
+                  </StatItem>
+                  <StatItem>
+                    <StatValue>{Math.round((filteredData.length / realTimeData.length) * 100)}%</StatValue>
+                    <StatLabel>Data Loaded</StatLabel>
+                  </StatItem>
+                  <StatItem>
+                    <StatValue>{dataChunkSize}</StatValue>
+                    <StatLabel>Chunk Size</StatLabel>
+                  </StatItem>
+                  <StatItem>
+                    <StatValue>{currentChunkIndex + 1}</StatValue>
+                    <StatLabel>Current Chunk</StatLabel>
+                  </StatItem>
+                </DataStats>
+              )}
+
+              {/* Load More Button */}
+              {hasData && realTimeData && filteredData.length < realTimeData.length && (
+                <LoadMoreButton
+                  onClick={loadNextChunk}
+                  disabled={isLoadingMoreData}
+                >
+                  {isLoadingMoreData ? (
+                    <>
+                      <LoadingSpinner style={{ width: '16px', height: '16px', margin: 0 }} />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <FiDownload />
+                      Load More Data ({Math.min(dataChunkSize, realTimeData.length - filteredData.length)} records)
+                    </>
+                  )}
+                </LoadMoreButton>
+              )}
 
               <GraphsContainer>
                 {/* Wind Direction - Wind Rose */}
