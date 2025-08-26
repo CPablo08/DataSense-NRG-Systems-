@@ -634,7 +634,7 @@ const StatItem = styled.div`
   text-align: center;
 `;
 
-const StatValue = styled.div`
+const DataStatValue = styled.div`
   font-size: 18px;
   font-weight: bold;
   color: #1f6feb;
@@ -3334,23 +3334,23 @@ const generatePDFReport = (data, timeRange, fileName) => {
               {hasData && realTimeData && realTimeData.length > 0 && (
                 <DataStats>
                   <StatItem>
-                    <StatValue>{filteredData.length.toLocaleString()}</StatValue>
+                    <DataStatValue>{filteredData.length.toLocaleString()}</DataStatValue>
                     <StatLabel>Loaded Records</StatLabel>
                   </StatItem>
                   <StatItem>
-                    <StatValue>{realTimeData.length.toLocaleString()}</StatValue>
+                    <DataStatValue>{realTimeData.length.toLocaleString()}</DataStatValue>
                     <StatLabel>Total Records</StatLabel>
                   </StatItem>
                   <StatItem>
-                    <StatValue>{Math.round((filteredData.length / realTimeData.length) * 100)}%</StatValue>
+                    <DataStatValue>{Math.round((filteredData.length / realTimeData.length) * 100)}%</DataStatValue>
                     <StatLabel>Data Loaded</StatLabel>
                   </StatItem>
                   <StatItem>
-                    <StatValue>{dataChunkSize}</StatValue>
+                    <DataStatValue>{dataChunkSize}</DataStatValue>
                     <StatLabel>Chunk Size</StatLabel>
                   </StatItem>
                   <StatItem>
-                    <StatValue>{currentChunkIndex + 1}</StatValue>
+                    <DataStatValue>{currentChunkIndex + 1}</DataStatValue>
                     <StatLabel>Current Chunk</StatLabel>
                   </StatItem>
                 </DataStats>
