@@ -382,10 +382,20 @@ async def process_txt_file_upload(file: UploadFile = File(...), db: Session = De
             "timestamp": datetime.now().isoformat()
         })
         
+        # Create summary for the processed data
+        summary = {
+            "totalRecords": len(processed_data),
+            "sensorCount": len(new_data[0]) if new_data else 0,
+            "fileCount": 1,
+            "lastUpdate": datetime.now().isoformat()
+        }
+        
         return {
             "message": "TXT file processed successfully",
             "records_added": len(new_data),
-            "filename": file.filename
+            "filename": file.filename,
+            "data": new_data,
+            "summary": summary
         }
         
     except Exception as e:
@@ -415,7 +425,8 @@ async def convert_rld_to_txt_endpoint(file: UploadFile = File(...)):
             "message": "RLD file converted to TXT successfully",
             "txt_filename": os.path.basename(txt_file),
             "txt_content": txt_content,
-            "original_filename": file.filename
+            "original_filename": file.filename,
+            "converted_file_path": txt_file
         }
         
     except Exception as e:

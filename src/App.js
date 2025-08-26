@@ -1600,11 +1600,11 @@ const App = () => {
   useEffect(() => {
     const loadFiles = async () => {
       // Load local files
-    const savedFiles = localStorage.getItem('datasenseLibraryFiles');
+      const savedFiles = localStorage.getItem('datasenseLibraryFiles');
       let localFiles = [];
       
-    if (savedFiles) {
-      const files = JSON.parse(savedFiles);
+      if (savedFiles) {
+        const files = JSON.parse(savedFiles);
       
       // Clean old data (older than 1 year)
       const oneYearAgo = new Date();
@@ -1646,8 +1646,31 @@ const App = () => {
           tags: []
         }));
         
-        // Combine local and backend files
-        const allFiles = [...localFiles, ...backendFiles];
+        // Combine local and backend files with duplicate detection
+        const allFiles = [...localFiles];
+        
+        // Add backend files, checking for duplicates
+        backendFiles.forEach(backendFile => {
+          const duplicate = allFiles.find(localFile => 
+            localFile.name === backendFile.name && 
+            localFile.records === backendFile.records
+          );
+          
+          if (duplicate) {
+            console.log(`Duplicate detected: ${backendFile.name} - merging data`);
+            // Merge the files by updating the existing one
+            const index = allFiles.indexOf(duplicate);
+            allFiles[index] = {
+              ...duplicate,
+              source: 'merged',
+              date: new Date().toISOString(),
+              processingDate: backendFile.processingDate
+            };
+          } else {
+            allFiles.push(backendFile);
+          }
+        });
+        
         setLibraryFiles(allFiles);
         
         // Extract all unique tags
@@ -2233,7 +2256,44 @@ const App = () => {
     setSummary(libraryFile.summary);
     setHasData(true);
     setTimeIndex(0);
+    setCurrentView('dashboard');
     addLogEntry(`${t('loadedLibraryFile')}: ${libraryFile.name}`, 'success');
+  };
+
+  // Check for duplicate files and merge them
+  const checkForDuplicates = (newFile) => {
+    const existingFiles = libraryFiles || [];
+    const duplicate = existingFiles.find(file => 
+      file.name === newFile.name && 
+      file.records === newFile.records &&
+      file.date === newFile.date
+    );
+    return duplicate;
+  };
+
+  // Merge duplicate files by combining their data
+  const mergeDuplicateFiles = (existingFile, newFile) => {
+    // If files are identical, just return the existing one
+    if (JSON.stringify(existingFile.data) === JSON.stringify(newFile.data)) {
+      return existingFile;
+    }
+    
+    // If files have different data, merge them
+    const mergedData = [...(existingFile.data || []), ...(newFile.data || [])];
+    const mergedSummary = {
+      ...existingFile.summary,
+      totalRecords: (existingFile.summary?.totalRecords || 0) + (newFile.summary?.totalRecords || 0),
+      fileCount: Math.max(existingFile.summary?.fileCount || 1, newFile.summary?.fileCount || 1),
+      lastUpdate: new Date().toISOString()
+    };
+    
+    return {
+      ...existingFile,
+      data: mergedData,
+      summary: mergedSummary,
+      records: mergedData.length,
+      date: new Date().toISOString()
+    };
   };
 
 
@@ -2377,15 +2437,31 @@ const App = () => {
       let processedCount = 0;
       let errorCount = 0;
       const errors = [];
+      let lastProcessedData = null;
 
       for (const file of uploadedFiles) {
         try {
+          // Auto-detect file format
+          const isRldFile = file.name.toLowerCase().endsWith('.rld');
+          const isTxtFile = file.name.toLowerCase().endsWith('.txt');
+          
+          if (!isRldFile && !isTxtFile) {
+            throw new Error('Unsupported file format. Please upload .rld or .txt files.');
+          }
+
           let result;
           
-          if (uploadMode === 'txt') {
+          if (isTxtFile) {
+            // Process TXT file directly
             result = await apiService.processTxtFile(file);
+            lastProcessedData = result;
           } else {
-            result = await apiService.convertRldToTxt(file);
+            // Convert RLD to TXT first, then process
+            const conversionResult = await apiService.convertRldToTxt(file);
+            // Create a new file object with the converted content
+            const txtFile = new File([conversionResult.txt_content], file.name.replace('.rld', '.txt'), { type: 'text/plain' });
+            result = await apiService.processTxtFile(txtFile);
+            lastProcessedData = result;
           }
           
           processedCount++;
@@ -2406,11 +2482,53 @@ const App = () => {
         error: errorCount > 0 
       });
 
-      // Refresh data after successful upload
-      if (processedCount > 0) {
+      // Auto-display the last processed file data and save to library
+      if (processedCount > 0 && lastProcessedData) {
         setTimeout(() => {
-          window.location.reload();
-        }, 2000);
+          // Load the processed data into the dashboard
+          if (lastProcessedData.data && lastProcessedData.summary) {
+            setRealTimeData(lastProcessedData.data);
+            setSummary(lastProcessedData.summary);
+            setHasData(true);
+            setTimeIndex(0);
+            setCurrentView('dashboard');
+            
+            // Save to library with duplicate detection
+            const newLibraryFile = {
+              id: `processed-${Date.now()}`,
+              name: lastProcessedData.filename,
+              date: new Date().toISOString(),
+              records: lastProcessedData.records_added,
+              size: 0,
+              processingDate: new Date().toLocaleString(),
+              status: 'processed',
+              source: 'processed',
+              tags: [],
+              data: lastProcessedData.data,
+              summary: lastProcessedData.summary
+            };
+            
+            // Check for duplicates and add to library
+            setLibraryFiles(prev => {
+              const existingFiles = prev || [];
+              const duplicate = existingFiles.find(file => 
+                file.name === newLibraryFile.name && 
+                file.records === newLibraryFile.records
+              );
+              
+              if (duplicate) {
+                console.log(`Duplicate detected in library: ${newLibraryFile.name} - updating existing entry`);
+                return existingFiles.map(file => 
+                  file.id === duplicate.id ? { ...file, ...newLibraryFile } : file
+                );
+              } else {
+                return [...existingFiles, newLibraryFile];
+              }
+            });
+            
+            addLogEntry(`Auto-displayed and saved processed data: ${lastProcessedData.summary.fileCount} files, ${lastProcessedData.summary.totalRecords} records`, 'success');
+          }
+        }, 1000);
       }
 
     } catch (error) {
