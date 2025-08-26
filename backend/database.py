@@ -7,6 +7,16 @@ from datetime import datetime
 # Database URL from environment variable - use SQLite as fallback
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./nrg_config.db")
 
+# Ensure we're using the correct database path
+if DATABASE_URL.startswith("sqlite:///"):
+    # Convert relative path to absolute path
+    db_path = DATABASE_URL.replace("sqlite:///", "")
+    if not os.path.isabs(db_path):
+        # Make it relative to the backend directory
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        db_path = os.path.join(backend_dir, db_path)
+        DATABASE_URL = f"sqlite:///{db_path}"
+
 # If using PostgreSQL from Render, convert the URL format
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)

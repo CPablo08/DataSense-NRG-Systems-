@@ -660,16 +660,23 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.post("/api/library/add")
 async def add_to_library(
-    filename: str,
-    file_size: int,
-    records_count: int,
-    tags: List[str] = [],
-    category: str = "general",
-    description: str = "",
+    file_data: dict,
     db: Session = Depends(get_db)
 ):
     """Add file to library with enhanced metadata and robust database registration"""
     try:
+        # Extract data from request body
+        filename = file_data.get("filename")
+        file_size = file_data.get("file_size", 0)
+        records_count = file_data.get("records_count", 0)
+        tags = file_data.get("tags", [])
+        category = file_data.get("category", "general")
+        description = file_data.get("description", "")
+        
+        if not filename:
+            raise HTTPException(status_code=400, detail="Filename is required")
+        
+        logger.info(f"Attempting to add file to database: {filename} (records: {records_count}, size: {file_size})")
         logger.info(f"Attempting to add file to database: {filename} (records: {records_count}, size: {file_size})")
         
         # Check if file already exists
