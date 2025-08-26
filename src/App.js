@@ -2420,7 +2420,7 @@ const App = () => {
   };
 
   // Get full dataset for charts (showing complete data with exact timestamps) - OPTIMIZED
-  const getCurrentChartData = useMemo(() => {
+  const getCurrentChartData = useCallback(() => {
     if (!filteredData || filteredData.length === 0 || !hasData) {
       return [{time: t('noDataAvailable'), NRG_40C_Anem: 0, NRG_200M_Vane: 0, NRG_T60_Temp: 0, NRG_RH5X_Humi: 0, NRG_BP60_Baro: 0, Rain_Gauge: 0, NRG_PVT1_PV_Temp: 0, PSM_c_Si_Isc_Soil: 0, PSM_c_Si_Isc_Clean: 0, Average_12V_Battery: 0}];
     }
