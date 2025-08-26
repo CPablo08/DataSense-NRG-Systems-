@@ -2302,29 +2302,33 @@ const App = () => {
   const deleteLibraryFile = async (fileId) => {
     if (window.confirm('Are you sure you want to delete this file?')) {
       try {
-        // Remove from state
+        // Find the file to delete before removing it from state
+        const fileToDelete = libraryFiles.find(file => file.id === fileId);
+        
+        if (!fileToDelete) {
+          addLogEntry('File not found for deletion', 'error');
+          return;
+        }
+        
+        // Remove from state and localStorage
         setLibraryFiles(prev => {
           const updatedFiles = (prev || []).filter(file => file.id !== fileId);
-          
-          // Update localStorage
           localStorage.setItem('datasenseLibraryFiles', JSON.stringify(updatedFiles));
-          
           return updatedFiles;
         });
         
         // If it's a backend file, also remove from backend
-        const fileToDelete = libraryFiles.find(file => file.id === fileId);
-        if (fileToDelete && fileToDelete.source === 'backend') {
+        if (fileToDelete.source === 'backend') {
           try {
             await apiService.deleteFile(fileToDelete.name);
-            addLogEntry(`File ${fileToDelete.name} deleted from backend`, 'info');
+            addLogEntry(`File ${fileToDelete.name} deleted from backend`, 'success');
           } catch (error) {
             console.error('Error deleting from backend:', error);
             addLogEntry(`Error deleting from backend: ${error.message}`, 'error');
           }
         }
         
-        addLogEntry('File permanently deleted from library', 'success');
+        addLogEntry(`File "${fileToDelete.name}" permanently deleted from library`, 'success');
       } catch (error) {
         console.error('Error deleting file:', error);
         addLogEntry(`Error deleting file: ${error.message}`, 'error');
@@ -2558,7 +2562,7 @@ const App = () => {
   const processUploadedFiles = async () => {
     if (uploadedFiles.length === 0) return;
 
-    setUploadStatus({ loading: true, message: '', error: false });
+    setUploadStatus({ loading: true, message: 'Processing files...', error: false });
 
     try {
       let processedCount = 0;
@@ -2576,18 +2580,30 @@ const App = () => {
             throw new Error('Unsupported file format. Please upload .rld or .txt files.');
           }
 
+          setUploadStatus({ loading: true, message: `Processing ${file.name}...`, error: false });
+
           let result;
           
           if (isTxtFile) {
-            // Process TXT file directly
-            result = await apiService.processTxtFile(file);
+            // Process TXT file directly with timeout
+            result = await Promise.race([
+              apiService.processTxtFile(file),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Processing timeout - file too large')), 300000) // 5 minutes
+              )
+            ]);
             lastProcessedData = result;
           } else {
             // Convert RLD to TXT first, then process
             const conversionResult = await apiService.convertRldToTxt(file);
             // Create a new file object with the converted content
             const txtFile = new File([conversionResult.txt_content], file.name.replace('.rld', '.txt'), { type: 'text/plain' });
-            result = await apiService.processTxtFile(txtFile);
+            result = await Promise.race([
+              apiService.processTxtFile(txtFile),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Processing timeout - file too large')), 300000) // 5 minutes
+              )
+            ]);
             lastProcessedData = result;
           }
           

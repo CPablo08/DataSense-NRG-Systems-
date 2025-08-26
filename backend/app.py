@@ -116,102 +116,97 @@ def convert_rld_to_txt(rld_file_path: str, output_folder: str = "./converted") -
         return None
 
 def process_txt_file(txt_file: str) -> List[Dict]:
-    """Process SymphoniePRO TXT file and extract sensor data"""
+    """Process SymphoniePRO TXT file and extract sensor data efficiently"""
     try:
-        with open(txt_file, 'r') as f:
-            content = f.read()
+        logger.info(f"Starting to process {txt_file}")
         
-        # Parse the TXT file
-        lines = content.split('\n')
+        # Read file line by line to handle large files efficiently
         processed_data = []
-        
-        # Find the header line that contains "Timestamp"
         header_line_index = -1
-        for i, line in enumerate(lines):
-            if "Timestamp" in line:
-                header_line_index = i
-                break
+        sensor_mapping = {}
         
-        if header_line_index == -1:
-            logger.warning(f"No header line found in {txt_file}")
-            return []
-        
-        # Parse the header line to get column names
-        header_line = lines[header_line_index]
-        headers = header_line.split('\t')
-        
-        # Map column indices to sensor names based on actual file structure
-        sensor_mapping = {
-            "NRG_40C_Anem": 1,      # Ch1_Anem_0.00m_N_Avg_m/s (Wind Speed)
-            "NRG_200M_Vane": 7,     # Ch13_Vane_0.00m_N_Avg_Deg (Wind Direction)
-            "NRG_T60_Temp": 10,     # Ch14_Analog_0.00m_N_Avg_C (Temperature)
-            "NRG_RH5X_Humi": 14,    # Ch16_Analog_0.00m_N_Avg_%RH (Humidity)
-            "NRG_BP60_Baro": 18,    # Ch17_Analog_0.00m_N_Avg_hPa (Pressure)
-            "Rain_Gauge": 6,        # Ch4_Total_0.00m_N_Sum_mm (Rainfall)
-            "NRG_PVT1_PV_Temp": 26, # Ch21_Therm_0.00m_N_Avg_C (PV Temperature)
-            "PSM_c_Si_Isc_Soil": 30, # Ch22_Analog_0.00m_N_Avg_A (Solar Current Soil)
-            "PSM_c_Si_Isc_Clean": 34, # Ch23_Analog_0.00m_N_Avg_A (Solar Current Clean)
-            "Solar_Irradiance_1": 38, # Ch24_Analog_0.00m_N_Avg_W/m2 (Solar Irradiance 1)
-            "Solar_Irradiance_2": 42, # Ch25_Analog_0.00m_N_Avg_W/m2 (Solar Irradiance 2)
-            "Solar_Irradiance_3": 46, # Ch26_Analog_0.00m_N_Avg_W/m2 (Solar Irradiance 3)
-            "Average_12V_Battery": 22  # Ch20_Analog_0.00m_N_Avg_hPa (Battery Voltage)
-        }
-        
-        logger.info(f"Found sensor mapping: {sensor_mapping}")
-        
-        # Process data lines starting after the header
-        for i in range(header_line_index + 1, len(lines)):
-            line = lines[i].strip()
-            if not line or line.startswith('#'):
-                continue
-            
-            try:
-                # Parse tab-separated values
-                values = line.split('\t')
-                if len(values) < 2:  # Need at least timestamp
+        with open(txt_file, 'r') as f:
+            for i, line in enumerate(f):
+                line = line.strip()
+                
+                # Find header line
+                if "Timestamp" in line and header_line_index == -1:
+                    header_line_index = i
+                    headers = line.split('\t')
+                    
+                    # Map column indices to sensor names based on actual file structure
+                    sensor_mapping = {
+                        "NRG_40C_Anem": 1,      # Ch1_Anem_0.00m_N_Avg_m/s (Wind Speed)
+                        "NRG_200M_Vane": 7,     # Ch13_Vane_0.00m_N_Avg_Deg (Wind Direction)
+                        "NRG_T60_Temp": 10,     # Ch14_Analog_0.00m_N_Avg_C (Temperature)
+                        "NRG_RH5X_Humi": 14,    # Ch16_Analog_0.00m_N_Avg_%RH (Humidity)
+                        "NRG_BP60_Baro": 18,    # Ch17_Analog_0.00m_N_Avg_hPa (Pressure)
+                        "Rain_Gauge": 6,        # Ch4_Total_0.00m_N_Sum_mm (Rainfall)
+                        "NRG_PVT1_PV_Temp": 26, # Ch21_Therm_0.00m_N_Avg_C (PV Temperature)
+                        "PSM_c_Si_Isc_Soil": 30, # Ch22_Analog_0.00m_N_Avg_A (Solar Current Soil)
+                        "PSM_c_Si_Isc_Clean": 34, # Ch23_Analog_0.00m_N_Avg_A (Solar Current Clean)
+                        "Solar_Irradiance_1": 38, # Ch24_Analog_0.00m_N_Avg_W/m2 (Solar Irradiance 1)
+                        "Solar_Irradiance_2": 42, # Ch25_Analog_0.00m_N_Avg_W/m2 (Solar Irradiance 2)
+                        "Solar_Irradiance_3": 46, # Ch26_Analog_0.00m_N_Avg_W/m2 (Solar Irradiance 3)
+                        "Average_12V_Battery": 22  # Ch20_Analog_0.00m_N_Avg_hPa (Battery Voltage)
+                    }
+                    
+                    logger.info(f"Found header at line {i+1}, sensor mapping: {sensor_mapping}")
                     continue
                 
-                # Extract timestamp
-                timestamp = values[0].strip()
-                if not timestamp or len(timestamp) < 19:
-                    continue
-                
-                # Create data record with mapped sensor values
-                record = {
-                    "time": timestamp,
-                    "timestamp": timestamp,
-                    "filename": os.path.basename(txt_file)
-                }
-                
-                # Add sensor values based on mapping
-                for sensor_name, column_index in sensor_mapping.items():
-                    if column_index < len(values):
-                        try:
-                            value = float(values[column_index].strip()) if values[column_index].strip() else 0
-                            record[sensor_name] = value
-                        except (ValueError, IndexError):
-                            record[sensor_name] = 0
-                    else:
-                        record[sensor_name] = 0
-                
-                # Add default values for missing sensors
-                default_sensors = [
-                    "NRG_40C_Anem", "NRG_200M_Vane", "NRG_T60_Temp", "NRG_RH5X_Humi",
-                    "NRG_BP60_Baro", "Rain_Gauge", "NRG_PVT1_PV_Temp", 
-                    "PSM_c_Si_Isc_Soil", "PSM_c_Si_Isc_Clean", "Average_12V_Battery"
-                ]
-                
-                for sensor in default_sensors:
-                    if sensor not in record:
-                        record[sensor] = 0
-                
-                processed_data.append(record)
-                
-            except Exception as e:
-                logger.warning(f"Error parsing line {i+1} in {txt_file}: {e}")
-                continue
+                # Process data lines after header
+                if header_line_index != -1 and i > header_line_index and line and not line.startswith('#'):
+                    try:
+                        # Parse tab-separated values
+                        values = line.split('\t')
+                        if len(values) < 2:  # Need at least timestamp
+                            continue
+                        
+                        # Extract timestamp
+                        timestamp = values[0].strip()
+                        if not timestamp or len(timestamp) < 19:
+                            continue
+                        
+                        # Create data record with mapped sensor values
+                        record = {
+                            "time": timestamp,
+                            "timestamp": timestamp,
+                            "filename": os.path.basename(txt_file)
+                        }
+                        
+                        # Add sensor values based on mapping
+                        for sensor_name, column_index in sensor_mapping.items():
+                            if column_index < len(values):
+                                try:
+                                    value = float(values[column_index].strip()) if values[column_index].strip() else 0
+                                    record[sensor_name] = value
+                                except (ValueError, IndexError):
+                                    record[sensor_name] = 0
+                            else:
+                                record[sensor_name] = 0
+                        
+                        # Add default values for missing sensors
+                        default_sensors = [
+                            "NRG_40C_Anem", "NRG_200M_Vane", "NRG_T60_Temp", "NRG_RH5X_Humi",
+                            "NRG_BP60_Baro", "Rain_Gauge", "NRG_PVT1_PV_Temp", 
+                            "PSM_c_Si_Isc_Soil", "PSM_c_Si_Isc_Clean", "Average_12V_Battery"
+                        ]
+                        
+                        for sensor in default_sensors:
+                            if sensor not in record:
+                                record[sensor] = 0
+                        
+                        processed_data.append(record)
+                        
+                        # Log progress every 1000 records
+                        if len(processed_data) % 1000 == 0:
+                            logger.info(f"Processed {len(processed_data)} records so far...")
+                        
+                    except Exception as e:
+                        logger.warning(f"Error parsing line {i+1} in {txt_file}: {e}")
+                        continue
         
-        logger.info(f"Processed {len(processed_data)} records from {txt_file}")
+        logger.info(f"Successfully processed {len(processed_data)} records from {txt_file}")
         return processed_data
         
     except Exception as e:

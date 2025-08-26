@@ -280,7 +280,9 @@ class ApiService {
         throw new Error(errorData.detail || 'TXT processing failed');
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log('Processing result:', result);
+      return result;
     } catch (error) {
       console.error('TXT processing failed:', error);
       throw error;
