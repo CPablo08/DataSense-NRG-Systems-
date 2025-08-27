@@ -1718,15 +1718,23 @@ const App = () => {
     const nextChunkIndex = currentChunkIndex + 1;
     const startIndex = nextChunkIndex * dataChunkSize;
     
-    if (startIndex >= realTimeData.length) return; // No more data
+    if (startIndex >= realTimeData.length) {
+      console.log('No more data to load');
+      return; // No more data
+    }
     
     setIsLoadingMoreData(true);
+    console.log(`Loading chunk ${nextChunkIndex + 1}: records ${startIndex + 1} to ${Math.min(startIndex + dataChunkSize, realTimeData.length)}`);
     
     // Simulate loading delay for better UX
     await new Promise(resolve => setTimeout(resolve, 100));
     
     const newChunk = getDataChunk(realTimeData, startIndex, dataChunkSize);
-    setFilteredData(prev => [...prev, ...newChunk]);
+    setFilteredData(prev => {
+      const updated = [...prev, ...newChunk];
+      console.log(`Chunk loaded: now showing ${updated.length} of ${realTimeData.length} total records`);
+      return updated;
+    });
     setCurrentChunkIndex(nextChunkIndex);
     setIsLoadingMoreData(false);
   }, [realTimeData, currentChunkIndex, dataChunkSize, getDataChunk]);
@@ -1738,6 +1746,9 @@ const App = () => {
     setFilteredData(initialChunk);
     setCurrentChunkIndex(0);
     setDataCache(new Map()); // Clear cache when new data is loaded
+    
+    console.log(`Data chunking initialized: showing ${initialChunk.length} of ${data.length} total records`);
+    console.log(`Chunk size: ${dataChunkSize}, Total chunks: ${Math.ceil(data.length / dataChunkSize)}`);
   }, [dataChunkSize, getDataChunk]);
 
   const filterAndSortData = useCallback((data, search, sort) => {
@@ -1775,8 +1786,11 @@ const App = () => {
       setDataSearchTerm(term);
       if (realTimeData && realTimeData.length > 0) {
         const filtered = filterAndSortData(realTimeData, term, sortConfig);
-        setFilteredData(filtered.slice(0, dataChunkSize));
+        // Only show first chunk when searching, but don't reset chunking completely
+        const firstChunk = filtered.slice(0, dataChunkSize);
+        setFilteredData(firstChunk);
         setCurrentChunkIndex(0);
+        console.log(`Search applied: showing ${firstChunk.length} of ${filtered.length} filtered records`);
       }
     }, 300),
     [realTimeData, sortConfig, filterAndSortData, dataChunkSize]
@@ -2950,6 +2964,10 @@ const generatePDFReport = (data, timeRange, fileName) => {
         setHasData(true);
         setTimeIndex(0);
         setCurrentView('dashboard');
+        
+        // Initialize chunked data loading
+        initializeDataChunking(result.data);
+        
         addLogEntry(`Loaded library file: ${libraryFile.filename || libraryFile.name}`, 'success');
       } else {
         throw new Error('No data available for this file');
@@ -3049,7 +3067,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
             >
               <FiDatabase />
               Database
-            </NavButton>
+          </NavButton>
           <NavButton 
             onClick={() => setShowSettings(true)}
           >
