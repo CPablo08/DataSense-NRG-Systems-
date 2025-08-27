@@ -1985,6 +1985,32 @@ const App = () => {
     return sensorUnits[sensorName] || 'N/A';
   };
 
+  // Extract site properties from data
+  const extractSitePropertiesFromData = (data) => {
+    if (!data || data.length === 0) {
+      return {
+        'Site Number': 'Unknown',
+        'Location': 'Unknown',
+        'Latitude': 'Unknown',
+        'Longitude': 'Unknown',
+        'Elevation': 'Unknown',
+        'Time Zone': 'Unknown'
+      };
+    }
+
+    // Try to extract from first record or use defaults
+    const firstRecord = data[0];
+    
+    return {
+      'Site Number': 'NRG DataSense Site',
+      'Location': 'Environmental Monitoring Station',
+      'Latitude': 'Unknown',
+      'Longitude': 'Unknown',
+      'Elevation': 'Unknown',
+      'Time Zone': 'UTC'
+    };
+  };
+
   // Parse SymphoniePRO TXT file
   const parseSymphoniePROFile = async (fileContent, fileName) => {
     addLogEntry(`Parsing SymphoniePRO file: ${fileName}`, 'info');
@@ -2907,13 +2933,13 @@ const generatePDFReport = (data, timeRange, fileName) => {
         setTimeIndex(0);
         setCurrentView('dashboard');
         
-        // Create summary
+        // Create summary with extracted site properties
         const summary = {
           totalRecords: result.data.length,
           sensorCount: Object.keys(result.data[0] || {}).length,
           fileCount: 1,
           lastUpdate: new Date().toISOString(),
-          siteProperties: result.siteProperties || {}
+          siteProperties: result.siteProperties || extractSitePropertiesFromData(result.data)
         };
         setSummary(summary);
         
