@@ -1729,13 +1729,7 @@ const App = () => {
 
   // Cleanup modal state removed - using individual delete buttons instead
 
-  // Data functions
-  const initializeData = useCallback((data) => {
-    if (!data || data.length === 0) return;
-    
-    setFilteredData(data);
-    console.log(`Data initialized: showing ${data.length} records`);
-  }, []);
+
 
   const filterAndSortData = useCallback((data, search, sort) => {
     if (!data || data.length === 0) return [];
@@ -2929,54 +2923,61 @@ const generatePDFReport = (data, timeRange, fileName) => {
     }
   };
 
-  const loadLibraryFile = async (libraryFile) => {
+  // Simple and clean visualize function
+  const visualizeFile = async (file) => {
     try {
-      console.log('🎯 loadLibraryFile called with:', libraryFile);
-      console.log('🎯 File ID:', libraryFile.id);
-      console.log('🎯 File name:', libraryFile.filename || libraryFile.name);
+      console.log('🎯 Visualizing file:', file.filename || file.name);
       
-      setCurrentFile(libraryFile); // Set current file for PDF generation
+      // Show loading state
+      showToast('🔄 Loading...', 'Loading file data...', 'info');
       
-      // Load data from backend using file ID
-      const result = await libraryService.getFileData(libraryFile.id);
+      // Get file data from backend
+      const response = await fetch(`${process.env.NODE_ENV === 'production' ? 'https://nrg-datasense-backend.onrender.com' : 'http://localhost:5000'}/api/data/${file.id}`);
       
-      if (result.data && result.data.length > 0) {
-        console.log('Loaded data from backend:', result.data.length, 'records');
-        
-        const summary = {
-          totalRecords: result.data.length,
-          sensorCount: Object.keys(result.data[0] || {}).length,
-          fileCount: 1,
-          lastUpdate: new Date().toISOString(),
-          siteProperties: result.siteProperties || {}
-        };
-        
-        setRealTimeData(result.data);
-        setSummary(summary);
-        setHasData(true);
-        setTimeIndex(0);
-        setCurrentView('dashboard');
-        
-        // Initialize data
-        initializeData(result.data);
-        
-        // Show success notification
-        addLogEntry(`✅ Revizualization successful: ${libraryFile.filename || libraryFile.name} loaded with ${result.data.length} records`, 'success');
-        
-        // Show toast notification
-        showToast(
-          '✅ Revizualization Successful!',
-          `File: ${libraryFile.filename || libraryFile.name}\nRecords: ${result.data.length.toLocaleString()}\nDashboard opened automatically.`,
-          'success'
-        );
-        
-      } else {
-        throw new Error('No data available for this file');
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
+      
+      const result = await response.json();
+      
+      if (!result.data || result.data.length === 0) {
+        throw new Error('No data found for this file');
+      }
+      
+      // Set the data
+      setRealTimeData(result.data);
+      setFilteredData(result.data);
+      setCurrentFile(file);
+      setHasData(true);
+      setTimeIndex(0);
+      setCurrentView('dashboard');
+      
+      // Create summary
+      const summary = {
+        totalRecords: result.data.length,
+        sensorCount: Object.keys(result.data[0] || {}).length,
+        fileCount: 1,
+        lastUpdate: new Date().toISOString(),
+        siteProperties: result.siteProperties || {}
+      };
+      setSummary(summary);
+      
+      // Show success
+      showToast(
+        '✅ Success!',
+        `File: ${file.filename || file.name}\nRecords: ${result.data.length.toLocaleString()}`,
+        'success'
+      );
+      
+      console.log('✅ File visualized successfully');
+      
     } catch (error) {
-      console.error('Error loading library file:', error);
-      addLogEntry(`❌ Error loading ${libraryFile.filename || libraryFile.name}: ${error.message}`, 'error');
-      alert(`❌ Cannot load data for ${libraryFile.filename || libraryFile.name}.\n\nError: ${error.message}`);
+      console.error('❌ Error visualizing file:', error);
+      showToast(
+        '❌ Error',
+        `Failed to load: ${file.filename || file.name}\n${error.message}`,
+        'error'
+      );
     }
   };
 
@@ -3602,13 +3603,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                             <FiTrash2 />
                           </ActionButton>
                           <ActionButton
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              console.log('🎯 Visualize button clicked for file:', file);
-                              console.log('🎯 File object:', file);
-                              await loadLibraryFile(file);
-                            }}
+                            onClick={() => visualizeFile(file)}
                             title="Open and visualize this file in dashboard"
                             style={{ background: '#1f6feb' }}
                           >
