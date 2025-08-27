@@ -2367,8 +2367,8 @@ const App = () => {
 
 
 
-  // Calculate sensor statistics
-  const getSensorStats = () => {
+  // Calculate sensor statistics (memoized)
+  const sensorStats = useMemo(() => {
     if (!realTimeData || !Array.isArray(realTimeData) || realTimeData.length === 0) {
       return null;
     }
@@ -2381,9 +2381,9 @@ const App = () => {
     const stats = {};
     
     sensors.forEach(sensor => {
-          const values = (realTimeData || [])
-      .map(point => point[sensor])
-      .filter(val => val !== undefined && val !== null && !isNaN(val));
+      const values = (realTimeData || [])
+        .map(point => point[sensor])
+        .filter(val => val !== undefined && val !== null && !isNaN(val));
       
       if (values.length > 0) {
         const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
@@ -2409,7 +2409,7 @@ const App = () => {
     });
 
     return stats;
-  };
+  }, [realTimeData, sensorUnits]);
 
   // Graph enlargement functions
   const handleGraphDoubleClick = (graphType) => {
@@ -3397,9 +3397,9 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   </GraphTitle>
                   <ScrollableChartContainer>
                     <StatisticsContainer>
-                      {getSensorStats() ? (
+                      {sensorStats ? (
                         <StatisticsGrid>
-                          {Object.entries(getSensorStats()).map(([sensor, data]) => (
+                          {Object.entries(sensorStats).map(([sensor, data]) => (
                             <StatisticsItem key={sensor}>
                               <StatHeader>
                                 <StatName>{getSensorDisplayName(sensor)}</StatName>
@@ -3840,14 +3840,14 @@ const generatePDFReport = (data, timeRange, fileName) => {
 
               {enlargedGraph === 'statistics' && (
                 <div style={{ height: '100%', overflow: 'auto' }}>
-                  {getSensorStats() ? (
+                  {sensorStats ? (
                     <div style={{ 
                       display: 'grid', 
                       gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
                       gap: '20px',
                       padding: '20px'
                     }}>
-                      {Object.entries(getSensorStats()).map(([sensor, data]) => (
+                      {Object.entries(sensorStats).map(([sensor, data]) => (
                         <div key={sensor} style={{
                           background: '#21262d',
                           border: '1px solid #30363d',
