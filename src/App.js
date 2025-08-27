@@ -10,7 +10,7 @@ import {
   FiCloud, FiSettings, FiBarChart2, FiPlay,
   FiThermometer, FiDroplet, FiWind, FiSun, FiBattery, FiAlertCircle, FiDatabase,
   FiTrendingUp, FiActivity, FiFolder, FiFile, FiClock, FiRotateCcw,
-  FiGlobe, FiDownload, FiSearch, FiX, FiUpload, FiTrash2, FiFileText
+  FiGlobe, FiDownload, FiSearch, FiX, FiUpload, FiTrash2, FiFileText, FiMousePointer
 } from 'react-icons/fi';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -928,10 +928,16 @@ const LibraryCard = styled.div`
   border: 1px solid ${props => props.theme === 'light' ? '#e1e4e8' : '#30363d'};
   border-radius: 8px;
   transition: all 0.2s;
+  cursor: pointer;
   
   &:hover {
     border-color: #1f6feb;
     box-shadow: 0 4px 12px rgba(31, 111, 235, 0.1);
+    background: ${props => props.theme === 'light' ? '#f8f9fa' : '#21262d'};
+  }
+  
+  &:active {
+    transform: scale(0.98);
   }
 `;
 
@@ -2870,10 +2876,10 @@ const generatePDFReport = (data, timeRange, fileName) => {
     }
   };
 
-  // Simple visualize function - just get data and display it
-  const visualizeFile = async (file) => {
+  // Load file from database on double click
+  const handleFileDoubleClick = async (file) => {
     try {
-      console.log('🎯 Visualizing file:', file.filename || file.name);
+      console.log('🎯 Double-clicked file:', file.filename || file.name);
       
       // Show browser notification
       if ('Notification' in window && Notification.permission === 'granted') {
@@ -2893,7 +2899,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
       const result = await response.json();
       
       if (result.data && result.data.length > 0) {
-        // Set the data
+        // Set the data like a regular file upload
         setRealTimeData(result.data);
         setFilteredData(result.data);
         setCurrentFile(file);
@@ -2919,14 +2925,14 @@ const generatePDFReport = (data, timeRange, fileName) => {
           });
         }
         
-        console.log('✅ File visualized successfully');
+        console.log('✅ File loaded successfully from database');
         
       } else {
         throw new Error('No data found for this file');
       }
       
     } catch (error) {
-      console.error('❌ Error visualizing file:', error);
+      console.error('❌ Error loading file:', error);
       
       // Show browser notification
       if ('Notification' in window && Notification.permission === 'granted') {
@@ -3529,7 +3535,12 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   </EmptyState>
                 ) : (
                   libraryFiles.map((file) => (
-                    <LibraryCard key={file.id}>
+                    <LibraryCard 
+                      key={file.id}
+                      onDoubleClick={() => handleFileDoubleClick(file)}
+                      style={{ cursor: 'pointer' }}
+                      title="Double-click to load this file"
+                    >
                       <LibraryCardHeader>
                         <FileIcon>
                           <FiFile />
@@ -3549,6 +3560,12 @@ const generatePDFReport = (data, timeRange, fileName) => {
                               <MetaLabel>Category:</MetaLabel>
                               <MetaValue>{file.category || 'general'}</MetaValue>
                             </MetaItem>
+                            <MetaItem style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #30363d' }}>
+                              <MetaLabel style={{ color: '#1f6feb', fontSize: '11px' }}>
+                                <FiMousePointer style={{ marginRight: '4px' }} />
+                                Double-click to load
+                              </MetaLabel>
+                            </MetaItem>
                           </FileMeta>
                         </FileInfo>
                         <FileActions>
@@ -3558,13 +3575,6 @@ const generatePDFReport = (data, timeRange, fileName) => {
                             style={{ background: '#f85149' }}
                           >
                             <FiTrash2 />
-                          </ActionButton>
-                          <ActionButton
-                            onClick={() => visualizeFile(file)}
-                            title="Open and visualize this file in dashboard"
-                            style={{ background: '#1f6feb' }}
-                          >
-                            <FiBarChart2 />
                           </ActionButton>
                         </FileActions>
                       </LibraryCardHeader>
