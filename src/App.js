@@ -1196,56 +1196,7 @@ const NoDataMessage = styled.div`
   }
 `;
 
-// Toast notification component
-const Toast = styled.div`
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background: ${props => props.type === 'success' ? '#238636' : props.type === 'error' ? '#da3633' : '#1f6feb'};
-  color: white;
-  padding: 16px 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  z-index: 10000;
-  max-width: 400px;
-  font-size: 14px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  animation: slideIn 0.3s ease-out;
-  
-  @keyframes slideIn {
-    from {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-`;
 
-const ToastIcon = styled.div`
-  font-size: 18px;
-  flex-shrink: 0;
-`;
-
-const ToastContent = styled.div`
-  flex: 1;
-`;
-
-const ToastTitle = styled.div`
-  font-weight: 600;
-  margin-bottom: 4px;
-`;
-
-const ToastMessage = styled.div`
-  opacity: 0.9;
-  font-size: 13px;
-  white-space: pre-line;
-`;
 
 // Translations
 const translations = {
@@ -1716,7 +1667,7 @@ const App = () => {
   const [uploadMode, setUploadMode] = useState('txt'); // 'txt' or 'rld'
   const [uploadStatus, setUploadStatus] = useState({ loading: false, message: '', error: false });
   const [currentFile, setCurrentFile] = useState(null);
-  const [toast, setToast] = useState(null);
+
   
   // Global loading state
   const [isProcessing, setIsProcessing] = useState(false);
@@ -1964,11 +1915,7 @@ const App = () => {
     console.log(`[${timestamp}] ${type.toUpperCase()}: ${message}`);
   };
 
-  // Show toast notification
-  const showToast = (title, message, type = 'success') => {
-    setToast({ title, message, type });
-    setTimeout(() => setToast(null), 4000); // Auto-hide after 4 seconds
-  };
+
 
   // Initialize with no data
   useEffect(() => {
@@ -2923,15 +2870,20 @@ const generatePDFReport = (data, timeRange, fileName) => {
     }
   };
 
-  // Simple and clean visualize function
+  // Simple visualize function - just get data and display it
   const visualizeFile = async (file) => {
     try {
       console.log('🎯 Visualizing file:', file.filename || file.name);
       
-      // Show loading state
-      showToast('🔄 Loading...', 'Loading file data...', 'info');
+      // Show browser notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('DataSense', {
+          body: `Loading ${file.filename || file.name}...`,
+          icon: '/assets/datasense-logo.png'
+        });
+      }
       
-      // Get file data from backend
+      // Get data from backend
       const response = await fetch(`${process.env.NODE_ENV === 'production' ? 'https://nrg-datasense-backend.onrender.com' : 'http://localhost:5000'}/api/data/${file.id}`);
       
       if (!response.ok) {
@@ -2940,44 +2892,49 @@ const generatePDFReport = (data, timeRange, fileName) => {
       
       const result = await response.json();
       
-      if (!result.data || result.data.length === 0) {
+      if (result.data && result.data.length > 0) {
+        // Set the data
+        setRealTimeData(result.data);
+        setFilteredData(result.data);
+        setCurrentFile(file);
+        setHasData(true);
+        setTimeIndex(0);
+        setCurrentView('dashboard');
+        
+        // Create summary
+        const summary = {
+          totalRecords: result.data.length,
+          sensorCount: Object.keys(result.data[0] || {}).length,
+          fileCount: 1,
+          lastUpdate: new Date().toISOString(),
+          siteProperties: result.siteProperties || {}
+        };
+        setSummary(summary);
+        
+        // Show browser notification
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('DataSense', {
+            body: `✅ ${file.filename || file.name} loaded successfully!\nRecords: ${result.data.length.toLocaleString()}`,
+            icon: '/assets/datasense-logo.png'
+          });
+        }
+        
+        console.log('✅ File visualized successfully');
+        
+      } else {
         throw new Error('No data found for this file');
       }
       
-      // Set the data
-      setRealTimeData(result.data);
-      setFilteredData(result.data);
-      setCurrentFile(file);
-      setHasData(true);
-      setTimeIndex(0);
-      setCurrentView('dashboard');
-      
-      // Create summary
-      const summary = {
-        totalRecords: result.data.length,
-        sensorCount: Object.keys(result.data[0] || {}).length,
-        fileCount: 1,
-        lastUpdate: new Date().toISOString(),
-        siteProperties: result.siteProperties || {}
-      };
-      setSummary(summary);
-      
-      // Show success
-      showToast(
-        '✅ Success!',
-        `File: ${file.filename || file.name}\nRecords: ${result.data.length.toLocaleString()}`,
-        'success'
-      );
-      
-      console.log('✅ File visualized successfully');
-      
     } catch (error) {
       console.error('❌ Error visualizing file:', error);
-      showToast(
-        '❌ Error',
-        `Failed to load: ${file.filename || file.name}\n${error.message}`,
-        'error'
-      );
+      
+      // Show browser notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('DataSense', {
+          body: `❌ Failed to load ${file.filename || file.name}\n${error.message}`,
+          icon: '/assets/datasense-logo.png'
+        });
+      }
     }
   };
 
@@ -4008,18 +3965,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
 
       {/* Cleanup Modal removed - using individual delete buttons instead */}
 
-      {/* Toast Notification */}
-      {toast && (
-        <Toast type={toast.type}>
-          <ToastIcon>
-            {toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : 'ℹ️'}
-          </ToastIcon>
-          <ToastContent>
-            <ToastTitle>{toast.title}</ToastTitle>
-            <ToastMessage>{toast.message}</ToastMessage>
-          </ToastContent>
-        </Toast>
-      )}
+
 
       {/* Settings Panel */}
       {showSettings && (
