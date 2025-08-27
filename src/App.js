@@ -2608,8 +2608,8 @@ const App = () => {
             name: lastProcessedData.filename
           });
           
-          // Initialize data
-          initializeData(lastProcessedData.data);
+          // Set filtered data
+          setFilteredData(lastProcessedData.data);
           
           // Save to library with database integration
           const fileData = {
