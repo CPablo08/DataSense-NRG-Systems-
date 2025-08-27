@@ -389,6 +389,28 @@ async def process_rld_file(file: UploadFile = File(...), db: Session = Depends(g
         # Save file metadata to database
         save_file_metadata(file_metadata, db)
         
+        # Save sensor data to database
+        for record in new_data:
+            sensor_record = SensorData(
+                file_source=file.filename,
+                time=record.get('time', ''),
+                timestamp=datetime.fromisoformat(record.get('timestamp', datetime.now().isoformat())),
+                NRG_40C_Anem=record.get('NRG_40C_Anem'),
+                NRG_200M_Vane=record.get('NRG_200M_Vane'),
+                NRG_T60_Temp=record.get('NRG_T60_Temp'),
+                NRG_RH5X_Humi=record.get('NRG_RH5X_Humi'),
+                NRG_BP60_Baro=record.get('NRG_BP60_Baro'),
+                Rain_Gauge=record.get('Rain_Gauge'),
+                NRG_PVT1_PV_Temp=record.get('NRG_PVT1_PV_Temp'),
+                PSM_c_Si_Isc_Soil=record.get('PSM_c_Si_Isc_Soil'),
+                PSM_c_Si_Isc_Clean=record.get('PSM_c_Si_Isc_Clean'),
+                Average_12V_Battery=record.get('Average_12V_Battery')
+            )
+            db.add(sensor_record)
+        
+        db.commit()
+        logger.info(f"Saved {len(new_data)} sensor records to database for file: {file.filename}")
+        
         # Broadcast to WebSocket clients
         await broadcast_to_websockets({
             "type": "new_data",
@@ -445,6 +467,28 @@ async def process_txt_file_upload(file: UploadFile = File(...), db: Session = De
         
         # Save file metadata to database
         save_file_metadata(file_metadata, db)
+        
+        # Save sensor data to database
+        for record in new_data:
+            sensor_record = SensorData(
+                file_source=file.filename,
+                time=record.get('time', ''),
+                timestamp=datetime.fromisoformat(record.get('timestamp', datetime.now().isoformat())),
+                NRG_40C_Anem=record.get('NRG_40C_Anem'),
+                NRG_200M_Vane=record.get('NRG_200M_Vane'),
+                NRG_T60_Temp=record.get('NRG_T60_Temp'),
+                NRG_RH5X_Humi=record.get('NRG_RH5X_Humi'),
+                NRG_BP60_Baro=record.get('NRG_BP60_Baro'),
+                Rain_Gauge=record.get('Rain_Gauge'),
+                NRG_PVT1_PV_Temp=record.get('NRG_PVT1_PV_Temp'),
+                PSM_c_Si_Isc_Soil=record.get('PSM_c_Si_Isc_Soil'),
+                PSM_c_Si_Isc_Clean=record.get('PSM_c_Si_Isc_Clean'),
+                Average_12V_Battery=record.get('Average_12V_Battery')
+            )
+            db.add(sensor_record)
+        
+        db.commit()
+        logger.info(f"Saved {len(new_data)} sensor records to database for file: {file.filename}")
         
         # Broadcast to WebSocket clients
         await broadcast_to_websockets({
@@ -627,7 +671,7 @@ async def get_files(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/upload-data")
-async def upload_data(filename: str, content: str, new_data: List[Dict]):
+async def upload_data(filename: str, content: str, new_data: List[Dict], db: Session = Depends(get_db)):
     """Upload processed data (for manual uploads)"""
     try:
         global processed_data
@@ -637,6 +681,28 @@ async def upload_data(filename: str, content: str, new_data: List[Dict]):
         
         # Save to file
         save_data(processed_data)
+        
+        # Save sensor data to database
+        for record in new_data:
+            sensor_record = SensorData(
+                file_source=filename,
+                time=record.get('time', ''),
+                timestamp=datetime.fromisoformat(record.get('timestamp', datetime.now().isoformat())),
+                NRG_40C_Anem=record.get('NRG_40C_Anem'),
+                NRG_200M_Vane=record.get('NRG_200M_Vane'),
+                NRG_T60_Temp=record.get('NRG_T60_Temp'),
+                NRG_RH5X_Humi=record.get('NRG_RH5X_Humi'),
+                NRG_BP60_Baro=record.get('NRG_BP60_Baro'),
+                Rain_Gauge=record.get('Rain_Gauge'),
+                NRG_PVT1_PV_Temp=record.get('NRG_PVT1_PV_Temp'),
+                PSM_c_Si_Isc_Soil=record.get('PSM_c_Si_Isc_Soil'),
+                PSM_c_Si_Isc_Clean=record.get('PSM_c_Si_Isc_Clean'),
+                Average_12V_Battery=record.get('Average_12V_Battery')
+            )
+            db.add(sensor_record)
+        
+        db.commit()
+        logger.info(f"Saved {len(new_data)} sensor records to database for file: {filename}")
         
         # Broadcast to WebSocket clients
         await broadcast_to_websockets({
