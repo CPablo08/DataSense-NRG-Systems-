@@ -3136,72 +3136,30 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   Site Information
                 </SitePropertiesTitle>
                 <SitePropertiesContent>
-                  {summary?.siteProperties?.['Site Number'] ? (
-                    <SiteProperty>
-                      <PropertyLabel>Site Number:</PropertyLabel>
-                      <PropertyValue>{summary.siteProperties['Site Number']}</PropertyValue>
-                    </SiteProperty>
-                  ) : (
-                    <SiteProperty>
-                      <PropertyLabel>Site Number:</PropertyLabel>
-                      <PropertyValue>No data available</PropertyValue>
-                    </SiteProperty>
-                  )}
-                  {summary?.siteProperties?.['Location'] ? (
-                    <SiteProperty>
-                      <PropertyLabel>Location:</PropertyLabel>
-                      <PropertyValue>{summary.siteProperties['Location']}</PropertyValue>
-                    </SiteProperty>
-                  ) : (
-                    <SiteProperty>
-                      <PropertyLabel>Location:</PropertyLabel>
-                      <PropertyValue>No data available</PropertyValue>
-                    </SiteProperty>
-                  )}
-                  {summary?.siteProperties?.['Latitude'] ? (
-                    <SiteProperty>
-                      <PropertyLabel>Latitude:</PropertyLabel>
-                      <PropertyValue>{summary.siteProperties['Latitude']}</PropertyValue>
-                    </SiteProperty>
-                  ) : (
-                    <SiteProperty>
-                      <PropertyLabel>Latitude:</PropertyLabel>
-                      <PropertyValue>No data available</PropertyValue>
-                    </SiteProperty>
-                  )}
-                  {summary?.siteProperties?.['Longitude'] ? (
-                    <SiteProperty>
-                      <PropertyLabel>Longitude:</PropertyLabel>
-                      <PropertyValue>{summary.siteProperties['Longitude']}</PropertyValue>
-                    </SiteProperty>
-                  ) : (
-                    <SiteProperty>
-                      <PropertyLabel>Longitude:</PropertyLabel>
-                      <PropertyValue>No data available</PropertyValue>
-                    </SiteProperty>
-                  )}
-                  {summary?.siteProperties?.['Elevation'] ? (
-                    <SiteProperty>
-                      <PropertyLabel>Elevation:</PropertyLabel>
-                      <PropertyValue>{summary.siteProperties['Elevation']} m</PropertyValue>
-                    </SiteProperty>
-                  ) : (
-                    <SiteProperty>
-                      <PropertyLabel>Elevation:</PropertyLabel>
-                      <PropertyValue>No data available</PropertyValue>
-                    </SiteProperty>
-                  )}
-                  {summary?.siteProperties?.['Time Zone'] ? (
-                    <SiteProperty>
-                      <PropertyLabel>Time Zone:</PropertyLabel>
-                      <PropertyValue>{summary.siteProperties['Time Zone']}</PropertyValue>
-                    </SiteProperty>
-                  ) : (
-                    <SiteProperty>
-                      <PropertyLabel>Time Zone:</PropertyLabel>
-                      <PropertyValue>No data available</PropertyValue>
-                    </SiteProperty>
-                  )}
+                  <SiteProperty>
+                    <PropertyLabel>Site Number:</PropertyLabel>
+                    <PropertyValue>{summary?.siteProperties?.['Site Number'] || 'No data available'}</PropertyValue>
+                  </SiteProperty>
+                  <SiteProperty>
+                    <PropertyLabel>Location:</PropertyLabel>
+                    <PropertyValue>{summary?.siteProperties?.['Location'] || 'No data available'}</PropertyValue>
+                  </SiteProperty>
+                  <SiteProperty>
+                    <PropertyLabel>Latitude:</PropertyLabel>
+                    <PropertyValue>{summary?.siteProperties?.['Latitude'] || 'No data available'}</PropertyValue>
+                  </SiteProperty>
+                  <SiteProperty>
+                    <PropertyLabel>Longitude:</PropertyLabel>
+                    <PropertyValue>{summary?.siteProperties?.['Longitude'] || 'No data available'}</PropertyValue>
+                  </SiteProperty>
+                  <SiteProperty>
+                    <PropertyLabel>Elevation:</PropertyLabel>
+                    <PropertyValue>{summary?.siteProperties?.['Elevation'] ? `${summary.siteProperties['Elevation']} m` : 'No data available'}</PropertyValue>
+                  </SiteProperty>
+                  <SiteProperty>
+                    <PropertyLabel>Time Zone:</PropertyLabel>
+                    <PropertyValue>{summary?.siteProperties?.['Time Zone'] || 'No data available'}</PropertyValue>
+                  </SiteProperty>
                 </SitePropertiesContent>
               </SitePropertiesCard>
 
