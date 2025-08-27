@@ -592,32 +592,7 @@ const LoadingDetails = styled.div`
   text-align: center;
 `;
 
-// Load more button
-const LoadMoreButton = styled.button`
-  background: #1f6feb;
-  border: 1px solid #1f6feb;
-  color: #fff;
-  padding: 12px 24px;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s ease;
-  margin: 20px auto;
-  
-  &:hover {
-    background: #1158c7;
-    border-color: #1158c7;
-  }
-  
-  &:disabled {
-    background: #30363d;
-    border-color: #30363d;
-    cursor: not-allowed;
-  }
-`;
+
 
 // Data stats display
 const DataStats = styled.div`
@@ -1695,61 +1670,20 @@ const App = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0, message: '' });
   
-  // Data optimization state
-  const [dataChunkSize] = useState(500); // Load 500 records at a time
-  const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
-  const [isLoadingMoreData, setIsLoadingMoreData] = useState(false);
-  const [dataCache, setDataCache] = useState(new Map()); // LRU cache for data chunks
+  // Data state
   const [filteredData, setFilteredData] = useState([]);
   const [dataSearchTerm, setDataSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'time', direction: 'asc' });
 
   // Cleanup modal state removed - using individual delete buttons instead
 
-  // Data optimization functions
-  const getDataChunk = useCallback((data, startIndex, chunkSize) => {
-    const endIndex = Math.min(startIndex + chunkSize, data.length);
-    return data.slice(startIndex, endIndex);
-  }, []);
-
-  const loadNextChunk = useCallback(async () => {
-    if (!realTimeData || realTimeData.length === 0) return;
-    
-    const nextChunkIndex = currentChunkIndex + 1;
-    const startIndex = nextChunkIndex * dataChunkSize;
-    
-    if (startIndex >= realTimeData.length) {
-      console.log('No more data to load');
-      return; // No more data
-    }
-    
-    setIsLoadingMoreData(true);
-    console.log(`Loading chunk ${nextChunkIndex + 1}: records ${startIndex + 1} to ${Math.min(startIndex + dataChunkSize, realTimeData.length)}`);
-    
-    // Simulate loading delay for better UX
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    const newChunk = getDataChunk(realTimeData, startIndex, dataChunkSize);
-    setFilteredData(prev => {
-      const updated = [...prev, ...newChunk];
-      console.log(`Chunk loaded: now showing ${updated.length} of ${realTimeData.length} total records`);
-      return updated;
-    });
-    setCurrentChunkIndex(nextChunkIndex);
-    setIsLoadingMoreData(false);
-  }, [realTimeData, currentChunkIndex, dataChunkSize, getDataChunk]);
-
-  const initializeDataChunking = useCallback((data) => {
+  // Data functions
+  const initializeData = useCallback((data) => {
     if (!data || data.length === 0) return;
     
-    const initialChunk = getDataChunk(data, 0, dataChunkSize);
-    setFilteredData(initialChunk);
-    setCurrentChunkIndex(0);
-    setDataCache(new Map()); // Clear cache when new data is loaded
-    
-    console.log(`Data chunking initialized: showing ${initialChunk.length} of ${data.length} total records`);
-    console.log(`Chunk size: ${dataChunkSize}, Total chunks: ${Math.ceil(data.length / dataChunkSize)}`);
-  }, [dataChunkSize, getDataChunk]);
+    setFilteredData(data);
+    console.log(`Data initialized: showing ${data.length} records`);
+  }, []);
 
   const filterAndSortData = useCallback((data, search, sort) => {
     if (!data || data.length === 0) return [];
@@ -1786,14 +1720,11 @@ const App = () => {
       setDataSearchTerm(term);
       if (realTimeData && realTimeData.length > 0) {
         const filtered = filterAndSortData(realTimeData, term, sortConfig);
-        // Only show first chunk when searching, but don't reset chunking completely
-        const firstChunk = filtered.slice(0, dataChunkSize);
-        setFilteredData(firstChunk);
-        setCurrentChunkIndex(0);
-        console.log(`Search applied: showing ${firstChunk.length} of ${filtered.length} filtered records`);
+        setFilteredData(filtered);
+        console.log(`Search applied: showing ${filtered.length} filtered records`);
       }
     }, 300),
-    [realTimeData, sortConfig, filterAndSortData, dataChunkSize]
+    [realTimeData, sortConfig, filterAndSortData]
   );
 
   // Optimized data access with caching
@@ -2625,8 +2556,8 @@ const App = () => {
           setTimeIndex(0);
           setCurrentView('dashboard');
           
-          // Initialize optimized data chunking
-          initializeDataChunking(lastProcessedData.data);
+                  // Initialize data
+        initializeData(lastProcessedData.data);
           
           // Save to library with database integration
           const fileData = {
@@ -2965,8 +2896,8 @@ const generatePDFReport = (data, timeRange, fileName) => {
         setTimeIndex(0);
         setCurrentView('dashboard');
         
-        // Initialize chunked data loading
-        initializeDataChunking(result.data);
+        // Initialize data
+        initializeData(result.data);
         
         addLogEntry(`Loaded library file: ${libraryFile.filename || libraryFile.name}`, 'success');
       } else {
@@ -3242,49 +3173,29 @@ const generatePDFReport = (data, timeRange, fileName) => {
 
 
 
-              {/* Data Performance Stats */}
+              {/* Platform Statistics */}
               <DataStats>
                 <DataStatItem>
-                  <DataStatValue>{hasData && realTimeData ? filteredData.length.toLocaleString() : '0'}</DataStatValue>
-                  <StatLabel>Loaded Records</StatLabel>
+                  <DataStatValue>{hasData && realTimeData && realTimeData.length > 0 ? Object.keys(realTimeData[0]).filter(key => key !== 'time' && key !== 'timestamp').length : '0'}</DataStatValue>
+                  <StatLabel>Active Sensors</StatLabel>
                 </DataStatItem>
                 <DataStatItem>
                   <DataStatValue>{hasData && realTimeData ? realTimeData.length.toLocaleString() : '0'}</DataStatValue>
-                  <StatLabel>Total Records</StatLabel>
+                  <StatLabel>Data Points</StatLabel>
                 </DataStatItem>
                 <DataStatItem>
-                  <DataStatValue>{hasData && realTimeData && realTimeData.length > 0 ? Math.round((filteredData.length / realTimeData.length) * 100) : 0}%</DataStatValue>
-                  <StatLabel>Data Loaded</StatLabel>
+                  <DataStatValue>{hasData && realTimeData && realTimeData.length > 0 ? `${realTimeData.length > 1 ? Math.round((new Date(realTimeData[realTimeData.length - 1].timestamp) - new Date(realTimeData[0].timestamp)) / (1000 * 60 * 60 * 24)) : 0} days` : '0 days'}</DataStatValue>
+                  <StatLabel>Time Range</StatLabel>
                 </DataStatItem>
                 <DataStatItem>
-                  <DataStatValue>{dataChunkSize}</DataStatValue>
-                  <StatLabel>Chunk Size</StatLabel>
+                  <DataStatValue>{hasData && realTimeData && realTimeData.length > 1 ? `${Math.round(realTimeData.length / Math.max(1, (new Date(realTimeData[realTimeData.length - 1].timestamp) - new Date(realTimeData[0].timestamp)) / (1000 * 60 * 60))) / 24} records/day` : '0 records/day'}</DataStatValue>
+                  <StatLabel>Update Rate</StatLabel>
                 </DataStatItem>
                 <DataStatItem>
-                  <DataStatValue>{currentChunkIndex + 1}</DataStatValue>
-                  <StatLabel>Current Chunk</StatLabel>
+                  <DataStatValue>{hasData && realTimeData && realTimeData.length > 0 ? `${Math.round((realTimeData.filter(record => Object.values(record).some(val => val !== null && val !== undefined && val !== '')).length / realTimeData.length) * 100)}%` : '0%'}</DataStatValue>
+                  <StatLabel>Data Quality</StatLabel>
                 </DataStatItem>
               </DataStats>
-
-              {/* Load More Button */}
-              {hasData && realTimeData && filteredData.length < realTimeData.length && (
-                <LoadMoreButton
-                  onClick={loadNextChunk}
-                  disabled={isLoadingMoreData}
-                >
-                  {isLoadingMoreData ? (
-                    <>
-                      <LoadingSpinner style={{ width: '16px', height: '16px', margin: 0 }} />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      <FiDownload />
-                      Load More Data ({Math.min(dataChunkSize, realTimeData.length - filteredData.length)} records)
-                    </>
-                  )}
-                </LoadMoreButton>
-              )}
 
               <GraphsContainer>
                 {/* Wind Direction - Wind Rose */}
