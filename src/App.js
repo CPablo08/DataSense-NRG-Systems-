@@ -1196,6 +1196,57 @@ const NoDataMessage = styled.div`
   }
 `;
 
+// Toast notification component
+const Toast = styled.div`
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: ${props => props.type === 'success' ? '#238636' : props.type === 'error' ? '#da3633' : '#1f6feb'};
+  color: white;
+  padding: 16px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 10000;
+  max-width: 400px;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: slideIn 0.3s ease-out;
+  
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+`;
+
+const ToastIcon = styled.div`
+  font-size: 18px;
+  flex-shrink: 0;
+`;
+
+const ToastContent = styled.div`
+  flex: 1;
+`;
+
+const ToastTitle = styled.div`
+  font-weight: 600;
+  margin-bottom: 4px;
+`;
+
+const ToastMessage = styled.div`
+  opacity: 0.9;
+  font-size: 13px;
+  white-space: pre-line;
+`;
+
 // Translations
 const translations = {
   en: {
@@ -1665,6 +1716,7 @@ const App = () => {
   const [uploadMode, setUploadMode] = useState('txt'); // 'txt' or 'rld'
   const [uploadStatus, setUploadStatus] = useState({ loading: false, message: '', error: false });
   const [currentFile, setCurrentFile] = useState(null);
+  const [toast, setToast] = useState(null);
   
   // Global loading state
   const [isProcessing, setIsProcessing] = useState(false);
@@ -1916,6 +1968,12 @@ const App = () => {
   const addLogEntry = (message, type = 'info') => {
     const timestamp = new Date().toLocaleTimeString();
     console.log(`[${timestamp}] ${type.toUpperCase()}: ${message}`);
+  };
+
+  // Show toast notification
+  const showToast = (title, message, type = 'success') => {
+    setToast({ title, message, type });
+    setTimeout(() => setToast(null), 4000); // Auto-hide after 4 seconds
   };
 
   // Initialize with no data
@@ -2894,14 +2952,23 @@ const generatePDFReport = (data, timeRange, fileName) => {
         // Initialize data
         initializeData(result.data);
         
-        addLogEntry(`Loaded library file: ${libraryFile.filename || libraryFile.name}`, 'success');
+        // Show success notification
+        addLogEntry(`✅ Revizualization successful: ${libraryFile.filename || libraryFile.name} loaded with ${result.data.length} records`, 'success');
+        
+        // Show toast notification
+        showToast(
+          '✅ Revizualization Successful!',
+          `File: ${libraryFile.filename || libraryFile.name}\nRecords: ${result.data.length.toLocaleString()}\nDashboard opened automatically.`,
+          'success'
+        );
+        
       } else {
         throw new Error('No data available for this file');
       }
     } catch (error) {
       console.error('Error loading library file:', error);
-      addLogEntry(`Error loading ${libraryFile.filename || libraryFile.name}: ${error.message}`, 'error');
-      alert(`Cannot load data for ${libraryFile.filename || libraryFile.name}. ${error.message}`);
+      addLogEntry(`❌ Error loading ${libraryFile.filename || libraryFile.name}: ${error.message}`, 'error');
+      alert(`❌ Cannot load data for ${libraryFile.filename || libraryFile.name}.\n\nError: ${error.message}`);
     }
   };
 
@@ -3931,6 +3998,19 @@ const generatePDFReport = (data, timeRange, fileName) => {
 
 
       {/* Cleanup Modal removed - using individual delete buttons instead */}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast type={toast.type}>
+          <ToastIcon>
+            {toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : 'ℹ️'}
+          </ToastIcon>
+          <ToastContent>
+            <ToastTitle>{toast.title}</ToastTitle>
+            <ToastMessage>{toast.message}</ToastMessage>
+          </ToastContent>
+        </Toast>
+      )}
 
       {/* Settings Panel */}
       {showSettings && (
