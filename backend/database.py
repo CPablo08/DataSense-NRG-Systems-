@@ -42,6 +42,7 @@ class FileMetadata(Base):
     processing_date = Column(String)
     status = Column(String)
     tags = Column(JSON, default=list)
+    site_properties = Column(JSON, default=dict)
     source = Column(String, default="backend")
     category = Column(String, default="general")
     description = Column(Text, nullable=True)

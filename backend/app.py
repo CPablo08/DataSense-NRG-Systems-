@@ -288,6 +288,7 @@ def save_file_metadata(metadata: Dict, db: Session):
             processing_date=metadata["processing_date"],
             status=metadata["status"],
             tags=metadata.get("tags", []),
+            site_properties=metadata.get("site_properties", {}),
             source=metadata.get("source", "backend")
         )
         db.add(db_metadata)
@@ -386,7 +387,11 @@ async def process_rld_file(file: UploadFile = File(...), db: Session = Depends(g
             "status": "processed"
         }
         
-        # Save file metadata to database
+        # Extract site properties from converted TXT file
+        site_properties = extract_site_properties(txt_file) if txt_file else {}
+        
+        # Save file metadata to database with site properties
+        file_metadata['site_properties'] = site_properties
         save_file_metadata(file_metadata, db)
         
         # Save sensor data to database
@@ -465,7 +470,11 @@ async def process_txt_file_upload(file: UploadFile = File(...), db: Session = De
             "source": "txt_upload"
         }
         
-        # Save file metadata to database
+        # Extract site properties
+        site_properties = extract_site_properties(upload_path)
+        
+        # Save file metadata to database with site properties
+        file_metadata['site_properties'] = site_properties
         save_file_metadata(file_metadata, db)
         
         # Save sensor data to database
@@ -496,9 +505,6 @@ async def process_txt_file_upload(file: UploadFile = File(...), db: Session = De
             "data": new_data,
             "timestamp": datetime.now().isoformat()
         })
-        
-        # Extract site properties
-        site_properties = extract_site_properties(upload_path)
         
         # Create summary for the processed data
         summary = {
@@ -608,7 +614,7 @@ async def get_data_by_file_id(file_id: int, db: Session = Depends(get_db)):
             "data": data,
             "filename": file_metadata.filename,
             "records": len(data),
-            "siteProperties": extract_site_properties_from_data(data) if data else {},
+            "siteProperties": file_metadata.site_properties if hasattr(file_metadata, 'site_properties') and file_metadata.site_properties else extract_site_properties_from_data(data) if data else {},
             "fileMetadata": {
                 "id": file_metadata.id,
                 "filename": file_metadata.filename,
