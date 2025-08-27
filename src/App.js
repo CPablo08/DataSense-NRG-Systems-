@@ -2033,6 +2033,11 @@ const App = () => {
     return names[sensorName] || sensorName;
   };
 
+  // Get sensor unit
+  const getSensorUnit = (sensorName) => {
+    return sensorUnits[sensorName] || 'N/A';
+  };
+
   // Parse SymphoniePRO TXT file
   const parseSymphoniePROFile = async (fileContent, fileName) => {
     addLogEntry(`Parsing SymphoniePRO file: ${fileName}`, 'info');
@@ -2452,7 +2457,7 @@ const App = () => {
           average: avg.toFixed(2),
           minimum: min.toFixed(2),
           maximum: max.toFixed(2),
-          unit: sensorUnits[sensor] || 'N/A',
+          unit: getSensorUnit(sensor),
           readings: values.length
         };
       } else {
@@ -2460,14 +2465,14 @@ const App = () => {
           average: 'N/A',
           minimum: 'N/A',
           maximum: 'N/A',
-          unit: sensorUnits[sensor] || 'N/A',
+          unit: getSensorUnit(sensor),
           readings: 0
         };
       }
     });
 
     return stats;
-  }, [realTimeData, sensorUnits]);
+  }, [realTimeData]);
 
   // Graph enlargement functions
   const handleGraphDoubleClick = (graphType) => {
@@ -2926,7 +2931,10 @@ const generatePDFReport = (data, timeRange, fileName) => {
 
   const loadLibraryFile = async (libraryFile) => {
     try {
-      console.log('Loading library file:', libraryFile);
+      console.log('🎯 loadLibraryFile called with:', libraryFile);
+      console.log('🎯 File ID:', libraryFile.id);
+      console.log('🎯 File name:', libraryFile.filename || libraryFile.name);
+      
       setCurrentFile(libraryFile); // Set current file for PDF generation
       
       // Load data from backend using file ID
@@ -3594,7 +3602,13 @@ const generatePDFReport = (data, timeRange, fileName) => {
                             <FiTrash2 />
                           </ActionButton>
                           <ActionButton
-                            onClick={async () => await loadLibraryFile(file)}
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              console.log('🎯 Visualize button clicked for file:', file);
+                              console.log('🎯 File object:', file);
+                              await loadLibraryFile(file);
+                            }}
                             title="Open and visualize this file in dashboard"
                             style={{ background: '#1f6feb' }}
                           >
