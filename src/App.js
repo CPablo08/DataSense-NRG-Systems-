@@ -1672,7 +1672,7 @@ const App = () => {
   
   // Data state
   const [filteredData, setFilteredData] = useState([]);
-  const [dataSearchTerm, setDataSearchTerm] = useState('');
+
   const [sortConfig, setSortConfig] = useState({ key: 'time', direction: 'asc' });
 
   // Cleanup modal state removed - using individual delete buttons instead
@@ -1714,18 +1714,7 @@ const App = () => {
     return filtered;
   }, []);
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce((term) => {
-      setDataSearchTerm(term);
-      if (realTimeData && realTimeData.length > 0) {
-        const filtered = filterAndSortData(realTimeData, term, sortConfig);
-        setFilteredData(filtered);
-        console.log(`Search applied: showing ${filtered.length} filtered records`);
-      }
-    }, 300),
-    [realTimeData, sortConfig, filterAndSortData]
-  );
+
 
   // Optimized data access with caching
   const getOptimizedChartData = useCallback(() => {
@@ -2556,8 +2545,14 @@ const App = () => {
           setTimeIndex(0);
           setCurrentView('dashboard');
           
-                  // Initialize data
-        initializeData(lastProcessedData.data);
+          // Set current file for display
+          setCurrentFile({
+            filename: lastProcessedData.filename,
+            name: lastProcessedData.filename
+          });
+          
+          // Initialize data
+          initializeData(lastProcessedData.data);
           
           // Save to library with database integration
           const fileData = {
@@ -3047,33 +3042,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   </NavButton>
                   
                   {/* Search Input */}
-                  {hasData && (
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      background: '#21262d', 
-                      border: '1px solid #30363d', 
-                      borderRadius: '4px', 
-                      padding: '0 12px',
-                      minWidth: '200px'
-                    }}>
-                      <FiSearch style={{ color: '#8b949e', marginRight: '8px' }} />
-                      <input
-                        type="text"
-                        placeholder="Search data..."
-                        onChange={(e) => debouncedSearch(e.target.value)}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#fff',
-                          fontSize: '14px',
-                          padding: '8px 0',
-                          width: '100%',
-                          outline: 'none'
-                        }}
-                      />
-                    </div>
-                  )}
+
 
                   <ControlButton 
                     onClick={() => {
@@ -3181,19 +3150,19 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 </DataStatItem>
                 <DataStatItem>
                   <DataStatValue>{hasData && realTimeData ? realTimeData.length.toLocaleString() : '0'}</DataStatValue>
-                  <StatLabel>Data Points</StatLabel>
+                  <StatLabel>Total Records</StatLabel>
                 </DataStatItem>
                 <DataStatItem>
-                  <DataStatValue>{hasData && realTimeData && realTimeData.length > 0 ? `${realTimeData.length > 1 ? Math.round((new Date(realTimeData[realTimeData.length - 1].timestamp) - new Date(realTimeData[0].timestamp)) / (1000 * 60 * 60 * 24)) : 0} days` : '0 days'}</DataStatValue>
-                  <StatLabel>Time Range</StatLabel>
+                  <DataStatValue>{hasData && realTimeData && realTimeData.length > 0 ? (realTimeData[0].timestamp ? new Date(realTimeData[0].timestamp).toLocaleDateString() : 'N/A') : 'N/A'}</DataStatValue>
+                  <StatLabel>Start Date</StatLabel>
                 </DataStatItem>
                 <DataStatItem>
-                  <DataStatValue>{hasData && realTimeData && realTimeData.length > 1 ? `${Math.round(realTimeData.length / Math.max(1, (new Date(realTimeData[realTimeData.length - 1].timestamp) - new Date(realTimeData[0].timestamp)) / (1000 * 60 * 60))) / 24} records/day` : '0 records/day'}</DataStatValue>
-                  <StatLabel>Update Rate</StatLabel>
+                  <DataStatValue>{hasData && realTimeData && realTimeData.length > 0 ? (realTimeData[realTimeData.length - 1].timestamp ? new Date(realTimeData[realTimeData.length - 1].timestamp).toLocaleDateString() : 'N/A') : 'N/A'}</DataStatValue>
+                  <StatLabel>End Date</StatLabel>
                 </DataStatItem>
                 <DataStatItem>
-                  <DataStatValue>{hasData && realTimeData && realTimeData.length > 0 ? `${Math.round((realTimeData.filter(record => Object.values(record).some(val => val !== null && val !== undefined && val !== '')).length / realTimeData.length) * 100)}%` : '0%'}</DataStatValue>
-                  <StatLabel>Data Quality</StatLabel>
+                  <DataStatValue>{hasData && realTimeData && realTimeData.length > 0 ? (currentFile ? (currentFile.filename || currentFile.name) : 'Unknown') : 'Unknown'}</DataStatValue>
+                  <StatLabel>Current File</StatLabel>
                 </DataStatItem>
               </DataStats>
 
