@@ -35,17 +35,40 @@ print_error() {
 # Check if Node.js is installed
 print_status "Checking Node.js installation..."
 if ! command -v node &> /dev/null; then
-    print_error "Node.js is not installed!"
+    print_warning "Node.js is not installed!"
     echo ""
-    echo "Please install Node.js from: https://nodejs.org/"
-    echo "Or use Homebrew: brew install node"
-    echo ""
-    read -p "Press Enter to exit..."
-    exit 1
+    echo "Installing Node.js automatically..."
+    
+    # Check if Homebrew is installed
+    if ! command -v brew &> /dev/null; then
+        print_status "Installing Homebrew first..."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        if [ $? -ne 0 ]; then
+            print_error "Failed to install Homebrew"
+            echo "Please install Node.js manually from: https://nodejs.org/"
+            read -p "Press Enter to exit..."
+            exit 1
+        fi
+        print_success "Homebrew installed successfully"
+    fi
+    
+    # Install Node.js via Homebrew
+    print_status "Installing Node.js via Homebrew..."
+    brew install node
+    if [ $? -ne 0 ]; then
+        print_error "Failed to install Node.js via Homebrew"
+        echo "Please install Node.js manually from: https://nodejs.org/"
+        read -p "Press Enter to exit..."
+        exit 1
+    fi
+    
+    # Reload shell environment
+    export PATH="/opt/homebrew/bin:$PATH"
+    print_success "Node.js installed successfully"
+else
+    NODE_VERSION=$(node --version)
+    print_success "Node.js found: $NODE_VERSION"
 fi
-
-NODE_VERSION=$(node --version)
-print_success "Node.js found: $NODE_VERSION"
 
 # Check if npm is installed
 if ! command -v npm &> /dev/null; then
@@ -57,22 +80,6 @@ fi
 
 NPM_VERSION=$(npm --version)
 print_success "npm found: $NPM_VERSION"
-
-# Check if Python is installed
-print_status "Checking Python installation..."
-if ! command -v python3 &> /dev/null; then
-    print_error "Python 3 is not installed!"
-    echo ""
-    echo "Please install Python 3:"
-    echo "  Homebrew: brew install python3"
-    echo "  Or download from: https://python.org/"
-    echo ""
-    read -p "Press Enter to exit..."
-    exit 1
-fi
-
-PYTHON_VERSION=$(python3 --version)
-print_success "Python found: $PYTHON_VERSION"
 
 # Check if we're in the right directory
 if [ ! -f "package.json" ]; then

@@ -13,17 +13,42 @@ REM Check if Node.js is installed
 echo [INFO] Checking Node.js installation...
 node --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Node.js is not installed or not in PATH
+    echo [WARNING] Node.js is not installed!
     echo.
-    echo Please install Node.js from: https://nodejs.org/
-    echo Download the LTS version for Windows
+    echo Installing Node.js automatically...
     echo.
-    pause
-    exit /b 1
+    
+    REM Check if Chocolatey is installed
+    choco --version >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo [INFO] Installing Chocolatey package manager...
+        powershell -Command "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
+        if %errorlevel% neq 0 (
+            echo [ERROR] Failed to install Chocolatey
+            echo Please install Node.js manually from: https://nodejs.org/
+            pause
+            exit /b 1
+        )
+        echo [SUCCESS] Chocolatey installed successfully
+    )
+    
+    REM Install Node.js via Chocolatey
+    echo [INFO] Installing Node.js via Chocolatey...
+    choco install nodejs -y
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to install Node.js via Chocolatey
+        echo Please install Node.js manually from: https://nodejs.org/
+        pause
+        exit /b 1
+    )
+    
+    REM Refresh environment variables
+    call refreshenv
+    echo [SUCCESS] Node.js installed successfully
+) else (
+    for /f "tokens=*" %%i in ('node --version') do set NODE_VERSION=%%i
+    echo [SUCCESS] Node.js found: %NODE_VERSION%
 )
-
-for /f "tokens=*" %%i in ('node --version') do set NODE_VERSION=%%i
-echo [SUCCESS] Node.js found: %NODE_VERSION%
 
 REM Check if npm is installed
 if not exist "node_modules" (
@@ -51,13 +76,25 @@ python --version >nul 2>&1
 if %errorlevel% neq 0 (
     python3 --version >nul 2>&1
     if %errorlevel% neq 0 (
-        echo [ERROR] Python is not installed!
+        echo [WARNING] Python is not installed!
         echo.
-        echo Please install Python 3 from: https://python.org/
-        echo Make sure to check "Add Python to PATH" during installation
+        echo Installing Python 3 automatically...
         echo.
-        pause
-        exit /b 1
+        
+        REM Install Python via Chocolatey
+        echo [INFO] Installing Python 3 via Chocolatey...
+        choco install python3 -y
+        if %errorlevel% neq 0 (
+            echo [ERROR] Failed to install Python 3 via Chocolatey
+            echo Please install Python 3 manually from: https://python.org/
+            pause
+            exit /b 1
+        )
+        
+        REM Refresh environment variables
+        call refreshenv
+        echo [SUCCESS] Python 3 installed successfully
+        set PYTHON_CMD=python
     ) else (
         set PYTHON_CMD=python3
     )

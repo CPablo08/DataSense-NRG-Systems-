@@ -35,20 +35,47 @@ print_error() {
 # Check if Node.js is installed
 print_status "Checking Node.js installation..."
 if ! command -v node &> /dev/null; then
-    print_error "Node.js is not installed!"
+    print_warning "Node.js is not installed!"
     echo ""
-    echo "Please install Node.js from: https://nodejs.org/"
-    echo "Or use your package manager:"
-    echo "  Ubuntu/Debian: sudo apt install nodejs npm"
-    echo "  CentOS/RHEL: sudo yum install nodejs npm"
-    echo "  Arch: sudo pacman -S nodejs npm"
-    echo ""
-    read -p "Press Enter to exit..."
-    exit 1
+    echo "Installing Node.js automatically..."
+    
+    # Detect Linux distribution
+    if [ -f /etc/debian_version ]; then
+        # Ubuntu/Debian
+        print_status "Detected Ubuntu/Debian - installing Node.js via apt..."
+        sudo apt update
+        sudo apt install -y nodejs npm
+    elif [ -f /etc/redhat-release ]; then
+        # CentOS/RHEL/Fedora
+        print_status "Detected Red Hat family - installing Node.js via yum/dnf..."
+        if command -v dnf &> /dev/null; then
+            sudo dnf install -y nodejs npm
+        else
+            sudo yum install -y nodejs npm
+        fi
+    elif [ -f /etc/arch-release ]; then
+        # Arch Linux
+        print_status "Detected Arch Linux - installing Node.js via pacman..."
+        sudo pacman -S --noconfirm nodejs npm
+    else
+        print_error "Unsupported Linux distribution"
+        echo "Please install Node.js manually from: https://nodejs.org/"
+        read -p "Press Enter to exit..."
+        exit 1
+    fi
+    
+    if [ $? -ne 0 ]; then
+        print_error "Failed to install Node.js"
+        echo "Please install Node.js manually from: https://nodejs.org/"
+        read -p "Press Enter to exit..."
+        exit 1
+    fi
+    
+    print_success "Node.js installed successfully"
+else
+    NODE_VERSION=$(node --version)
+    print_success "Node.js found: $NODE_VERSION"
 fi
-
-NODE_VERSION=$(node --version)
-print_success "Node.js found: $NODE_VERSION"
 
 # Check if npm is installed
 if ! command -v npm &> /dev/null; then
@@ -64,19 +91,47 @@ print_success "npm found: $NPM_VERSION"
 # Check if Python is installed
 print_status "Checking Python installation..."
 if ! command -v python3 &> /dev/null; then
-    print_error "Python 3 is not installed!"
+    print_warning "Python 3 is not installed!"
     echo ""
-    echo "Please install Python 3:"
-    echo "  Ubuntu/Debian: sudo apt install python3 python3-pip python3-venv"
-    echo "  CentOS/RHEL: sudo yum install python3 python3-pip"
-    echo "  Arch: sudo pacman -S python python-pip"
-    echo ""
-    read -p "Press Enter to exit..."
-    exit 1
+    echo "Installing Python 3 automatically..."
+    
+    # Detect Linux distribution and install Python
+    if [ -f /etc/debian_version ]; then
+        # Ubuntu/Debian
+        print_status "Installing Python 3 via apt..."
+        sudo apt update
+        sudo apt install -y python3 python3-pip python3-venv
+    elif [ -f /etc/redhat-release ]; then
+        # CentOS/RHEL/Fedora
+        print_status "Installing Python 3 via yum/dnf..."
+        if command -v dnf &> /dev/null; then
+            sudo dnf install -y python3 python3-pip
+        else
+            sudo yum install -y python3 python3-pip
+        fi
+    elif [ -f /etc/arch-release ]; then
+        # Arch Linux
+        print_status "Installing Python 3 via pacman..."
+        sudo pacman -S --noconfirm python python-pip
+    else
+        print_error "Unsupported Linux distribution"
+        echo "Please install Python 3 manually from: https://python.org/"
+        read -p "Press Enter to exit..."
+        exit 1
+    fi
+    
+    if [ $? -ne 0 ]; then
+        print_error "Failed to install Python 3"
+        echo "Please install Python 3 manually from: https://python.org/"
+        read -p "Press Enter to exit..."
+        exit 1
+    fi
+    
+    print_success "Python 3 installed successfully"
+else
+    PYTHON_VERSION=$(python3 --version)
+    print_success "Python found: $PYTHON_VERSION"
 fi
-
-PYTHON_VERSION=$(python3 --version)
-print_success "Python found: $PYTHON_VERSION"
 
 # Check if we're in the right directory
 if [ ! -f "package.json" ]; then
