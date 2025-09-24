@@ -38,7 +38,10 @@ if ! command -v node &> /dev/null; then
     print_error "Node.js is not installed!"
     echo ""
     echo "Please install Node.js from: https://nodejs.org/"
-    echo "Or use Homebrew: brew install node"
+    echo "Or use your package manager:"
+    echo "  Ubuntu/Debian: sudo apt install nodejs npm"
+    echo "  CentOS/RHEL: sudo yum install nodejs npm"
+    echo "  Arch: sudo pacman -S nodejs npm"
     echo ""
     read -p "Press Enter to exit..."
     exit 1
@@ -64,8 +67,9 @@ if ! command -v python3 &> /dev/null; then
     print_error "Python 3 is not installed!"
     echo ""
     echo "Please install Python 3:"
-    echo "  Homebrew: brew install python3"
-    echo "  Or download from: https://python.org/"
+    echo "  Ubuntu/Debian: sudo apt install python3 python3-pip python3-venv"
+    echo "  CentOS/RHEL: sudo yum install python3 python3-pip"
+    echo "  Arch: sudo pacman -S python python-pip"
     echo ""
     read -p "Press Enter to exit..."
     exit 1
