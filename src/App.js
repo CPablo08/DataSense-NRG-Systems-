@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { debounce } from 'lodash';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { 
@@ -7,15 +6,15 @@ import {
   AreaChart, Area, BarChart, Bar
 } from 'recharts';
 import { 
-  FiCloud, FiSettings, FiBarChart2, FiPlay,
+  FiSettings, FiBarChart2,
   FiThermometer, FiDroplet, FiWind, FiSun, FiBattery, FiAlertCircle, FiDatabase,
-  FiTrendingUp, FiActivity, FiFolder, FiFile, FiClock, FiRotateCcw,
-  FiGlobe, FiDownload, FiSearch, FiX, FiUpload, FiTrash2, FiFileText, FiMousePointer
+  FiTrendingUp, FiFolder, FiFile, FiRotateCcw,
+  FiGlobe, FiDownload, FiTrash2, FiMousePointer, FiPlay, FiShield, FiUpload
 } from 'react-icons/fi';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import apiService from './services/api';
-import { libraryService } from './services/api';
+import { libraryService, emailService } from './services/api';
 
 // Styled Components with darker colors
 const AppContainer = styled.div`
@@ -23,6 +22,12 @@ const AppContainer = styled.div`
   background: #0d1117;
   color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
 `;
 
 const Header = styled.header`
@@ -225,6 +230,8 @@ const ButtonGroup = styled.div`
   margin-top: 15px;
 `;
 
+
+
 const Overlay = styled.div`
   position: fixed;
   top: 0;
@@ -247,39 +254,10 @@ const ContentArea = styled.div`
 
 
 
-const CardTitle = styled.div`
-  font-size: 12px;
-  font-weight: bold;
-  color: #fff;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-`;
 
 
 
-const StatusIndicator = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: ${props => props.status === 'connected' ? '#1f6feb' : props.status === 'connecting' ? '#f59e0b' : '#dc2626'};
-  font-weight: 500;
-`;
 
-const StatusDot = styled.div`
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: ${props => props.status === 'connected' ? '#1f6feb' : props.status === 'connecting' ? '#f59e0b' : '#dc2626'};
-  animation: ${props => props.status === 'connecting' ? 'pulse 2s infinite' : 'none'};
-  
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-`;
 
 
 
@@ -335,84 +313,13 @@ const ControlButton = styled.button`
   }
 `;
 
-const UploadButton = styled.label`
-  background: #21262d;
-  border: 1px solid #30363d;
-  color: #fff;
-  padding: 8px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.3s ease;
-
-  &:hover {
-    background: #30363d;
-    border-color: #1f6feb;
-  }
-
-  input[type="file"] {
-    display: none;
-  }
-`;
-
-const UploadModal = styled(motion.div)`
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 8px;
-  padding: 20px;
-  z-index: 1000;
-  min-width: 400px;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-`;
-
-const ModalOverlay = styled(motion.div)`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  z-index: 999;
-`;
-
-const ModalTitle = styled.h3`
-  font-size: 16px;
-  font-weight: bold;
-  color: #fff;
-  margin-bottom: 15px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const ModalContent = styled.div`
-  margin-bottom: 15px;
-`;
-
-const ModalActions = styled.div`
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-`;
 
 
 
-const SummaryCards = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  margin-bottom: 20px;
-`;
+
+
+
+
 
 const SitePropertiesCard = styled.div`
   background: #161b22;
@@ -461,36 +368,7 @@ const PropertyValue = styled.span`
   font-size: 14px;
 `;
 
-const SummaryCard = styled.div`
-  background: #21262d;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #30363d;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-`;
 
-const SummaryIcon = styled.div`
-  font-size: 24px;
-  color: #1f6feb;
-`;
-
-const SummaryContent = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
-
-const SummaryValue = styled.div`
-  font-size: 18px;
-  font-weight: bold;
-  color: #fff;
-`;
-
-const SummaryLabel = styled.div`
-  font-size: 12px;
-  color: #8b949e;
-`;
 
 const GraphsContainer = styled.div`
   display: grid;
@@ -516,22 +394,7 @@ const GraphTitle = styled.h3`
   gap: 8px;
 `;
 
-const SensorPanels = styled.div`
-  background: #21262d;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #30363d;
-`;
 
-const PanelTitle = styled.h3`
-  font-size: 16px;
-  font-weight: bold;
-  color: #1f6feb;
-  margin-bottom: 15px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
 
 // Loading overlay components
 const LoadingOverlay = styled.div`
@@ -622,63 +485,11 @@ const StatLabel = styled.div`
   margin-top: 4px;
 `;
 
-const SensorGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-`;
-
-const InteractiveSensorCard = styled.div`
-  background: ${props => props.selected ? '#1158c7' : '#161b22'};
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid ${props => props.selected ? '#1f6feb' : '#30363d'};
-  cursor: pointer;
-  transition: all 0.3s ease;
-
-  &:hover {
-    background: ${props => props.selected ? '#1158c7' : '#21262d'};
-    border-color: #1f6feb;
-  }
-`;
-
-const SensorHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-`;
-
-const SensorName = styled.div`
-  font-size: 14px;
-  font-weight: bold;
-  color: #fff;
-`;
 
 
 
-const SensorValue = styled.div`
-  font-size: 24px;
-  font-weight: bold;
-  color: #1f6feb;
-  margin-bottom: 10px;
-  text-align: center;
-`;
 
-const SensorUnit = styled.div`
-  font-size: 12px;
-  color: #8b949e;
-  text-align: center;
-  margin-bottom: 15px;
-`;
 
-const SensorTime = styled.div`
-  font-size: 11px;
-  color: #8b949e;
-  text-align: center;
-  margin-bottom: 15px;
-  font-family: 'Courier New', monospace;
-`;
 
 
 
@@ -700,13 +511,7 @@ const EnlargedGraphModal = styled.div`
 
 
 
-const HelpText = styled.div`
-  font-size: 11px;
-  color: #8b949e;
-  margin-top: 5px;
-  line-height: 1.4;
-  font-style: italic;
-`;
+
 
 const SettingsStatus = styled.div`
   font-size: 12px;
@@ -716,6 +521,79 @@ const SettingsStatus = styled.div`
   background: ${props => props.type === 'success' ? 'rgba(35, 134, 54, 0.1)' : props.type === 'error' ? 'rgba(218, 54, 51, 0.1)' : 'transparent'};
   border-radius: 4px;
   border: 1px solid ${props => props.type === 'success' ? 'rgba(35, 134, 54, 0.3)' : props.type === 'error' ? 'rgba(218, 54, 51, 0.3)' : 'transparent'};
+`;
+
+// Status Panel Components
+const StatusPanel = styled.div`
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+`;
+
+const StatusPanelTitle = styled.h3`
+  color: #fff;
+  font-size: 18px;
+  margin: 0 0 15px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const StatusGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+`;
+
+const StatusItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+`;
+
+const StatusIndicator = styled.div`
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: ${props => 
+    props.status === 'running' ? '#238636' :
+    props.status === 'active' ? '#238636' :
+    props.status === 'error' ? '#da3633' :
+    props.status === 'not_configured' ? '#f0a020' :
+    props.status === 'idle' ? '#8b949e' :
+    '#6a737d'
+  };
+  animation: ${props => props.status === 'running' || props.status === 'active' ? 'pulse 2s infinite' : 'none'};
+`;
+
+const StatusText = styled.div`
+  flex: 1;
+`;
+
+const StatusLabel = styled.div`
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  margin-bottom: 2px;
+`;
+
+const StatusValue = styled.div`
+  font-size: 12px;
+  color: ${props => 
+    props.status === 'running' ? '#238636' :
+    props.status === 'active' ? '#238636' :
+    props.status === 'error' ? '#da3633' :
+    props.status === 'not_configured' ? '#f0a020' :
+    props.status === 'idle' ? '#8b949e' :
+    '#6a737d'
+  };
+  text-transform: capitalize;
 `;
 
 const EnlargedGraphContent = styled.div`
@@ -802,91 +680,6 @@ const ScrollableChartContainer = styled.div`
 const ChartWrapper = styled.div`
   min-width: ${props => Math.max(1200, props.dataLength * 3)}px; // Wider charts for full dataset
   height: 200px;
-`;
-
-// Library View Styled Components
-const SearchFilterSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  margin-bottom: 30px;
-  padding: 20px;
-  background: ${props => props.theme === 'light' ? '#ffffff' : '#161b22'};
-  border: 1px solid ${props => props.theme === 'light' ? '#e1e4e8' : '#30363d'};
-  border-radius: 8px;
-`;
-
-const SearchBox = styled.div`
-  position: relative;
-  display: flex;
-  align-items: center;
-  
-  svg {
-    position: absolute;
-    left: 12px;
-    color: #8b949e;
-    z-index: 1;
-  }
-  
-  input {
-    width: 100%;
-    padding: 12px 12px 12px 40px;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    background: #0d1117;
-    color: #ffffff;
-    font-size: 14px;
-    
-    &::placeholder {
-      color: #8b949e;
-    }
-    
-    &:focus {
-      outline: none;
-      border-color: #1f6feb;
-      box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.1);
-    }
-  }
-`;
-
-const FilterSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-`;
-
-const TagFilter = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  
-  label {
-    color: #ffffff;
-    font-weight: 500;
-    font-size: 14px;
-  }
-`;
-
-const TagButtons = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-`;
-
-const TagButton = styled.button`
-  padding: 6px 12px;
-  border: 1px solid ${props => props.active ? '#1f6feb' : '#30363d'};
-  border-radius: 16px;
-  background: ${props => props.active ? '#1f6feb' : 'transparent'};
-  color: ${props => props.active ? '#ffffff' : '#8b949e'};
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  
-  &:hover {
-    background: ${props => props.active ? '#1f6feb' : '#21262d'};
-    border-color: ${props => props.active ? '#1f6feb' : '#8b949e'};
-  }
 `;
 
 const LibraryStats = styled.div`
@@ -1018,60 +811,6 @@ const ActionButton = styled.button`
   &:hover {
     background: ${props => props.danger ? '#f85149' : '#21262d'};
     color: #ffffff;
-  }
-`;
-
-const FileTags = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 15px;
-`;
-
-const Tag = styled.span`
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 8px;
-  background: #21262d;
-  border: 1px solid #30363d;
-  border-radius: 12px;
-  color: #8b949e;
-  font-size: 12px;
-`;
-
-const RemoveTag = styled.button`
-  background: none;
-  border: none;
-  color: #8b949e;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  
-  &:hover {
-    color: #f85149;
-  }
-`;
-
-const AddTagSection = styled.div`
-  input {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    background: #0d1117;
-    color: #ffffff;
-    font-size: 12px;
-    
-    &::placeholder {
-      color: #8b949e;
-    }
-    
-    &:focus {
-      outline: none;
-      border-color: #1f6feb;
-    }
   }
 `;
 
@@ -1322,18 +1061,15 @@ const translations = {
     realTimeVisualizationSubtitle: 'Real-time visualization of RLD sensor data from the last 24 hours',
     pdfReport: 'PDF Report',
     generatePdfReport: 'Generate PDF Report',
-    windDirection: 'Wind Direction',
     readings: 'readings',
     first: 'First',
     last: 'Last',
     currentValues: 'Current Values',
     files: 'files',
     active: 'Active',
-    idle: 'Idle',
     noDataAvailable: 'No Data Available',
     processingStatus: 'Processing Status',
     processingCompleted: 'Processing Completed',
-    processingError: 'Processing Error',
     sensorDataAnalysis: 'Sensor Data Analysis',
     sensorDataAnalysisContinued: 'Sensor Data Analysis (Continued)',
     environmentalDataAnalysis: 'Environmental Data Analysis',
@@ -1342,7 +1078,6 @@ const translations = {
     sensorDataAnalysisReport: 'Sensor Data Analysis Report',
     generated: 'Generated',
     file: 'File',
-    records: 'Records',
     sensor: 'Sensor',
     average: 'Average',
     max: 'Max',
@@ -1380,18 +1115,12 @@ const translations = {
     activeSensors: 'Active Sensors',
     dataPoints: 'Data Points',
     with: 'with',
-    totalRecords: 'Total Records',
-    fullScreenAnalysis: 'Full Screen Analysis',
-    closeAnalysisWindow: 'Close Analysis Window',
-    settings: 'Settings',
     save: 'Save',
     reset: 'Reset',
     cancel: 'Cancel',
     // NRG API Configuration translations
 
     allFiles: 'All Files',
-    startDate: 'Start Date',
-    endDate: 'End Date',
     startDatePlaceholder: 'e.g., 2024-01-01',
     endDatePlaceholder: 'e.g., 2024-12-31',
     // Folder selection translations
@@ -1404,7 +1133,6 @@ const translations = {
 
     timestamp: 'Timestamp',
     fileName: 'File Name',
-    fileSize: 'File Size',
     selectAll: 'Select All',
     deselectAll: 'Deselect All',
 
@@ -1412,7 +1140,51 @@ const translations = {
     convertingRldToTxt: 'Converting RLD to TXT...',
     convertingTxtToCsv: 'Converting TXT to CSV...',
     readyForSelection: 'Ready for file selection',
+    operational: 'Operational',
+    disabled: 'Disabled',
+    database: 'Database',
+    bootProgram: 'Boot Program',
+    databaseManagement: 'Database Management',
+    manageAndVisualize: 'Manage and visualize your RLD data files',
+    importRldFile: 'Import RLD File',
+    totalFiles: 'Total Files',
+    totalRecords: 'Total Records',
+    totalSize: 'Total Size',
+    recent30Days: 'Recent (30 days)',
+    currentFile: 'Current File',
     // File filter explanations
+    clientName: 'Client Name',
+    expiryDate: 'Expiry Date',
+    daysRemaining: 'Days Remaining',
+    status: 'Status',
+    expiringSoon: 'Expiring Soon',
+    invalid: 'Invalid',
+    billingInformation: 'Billing Information',
+    subscriptionType: 'Subscription Type',
+    nextBillingDate: 'Next Billing Date',
+    amount: 'Amount',
+    paymentStatus: 'Payment Status',
+    paymentMethod: 'Payment Method',
+    autoRenewal: 'Auto Renewal',
+    usageStatistics: 'Usage Statistics',
+    totalValidations: 'Total Validations',
+    lastUsed: 'Last Used',
+    sessionCount: 'Session Count',
+    filesProcessed: 'Files Processed',
+    uptime: 'Uptime',
+    monthlyCost: 'Monthly Cost',
+    paid: 'Paid',
+    pending: 'Pending',
+    nextBilling: 'Next Billing',
+    renewalType: 'Renewal Type',
+    auto: 'Auto',
+    manual: 'Manual',
+    healthStatus: 'Health Status',
+    good: 'Good',
+    warning: 'Warning',
+    critical: 'Critical',
+    client: 'Client',
+    never: 'Never',
 
   },
   'es-DO': {
@@ -1589,8 +1361,6 @@ const translations = {
     // NRG API Configuration translations
 
     allFiles: 'Todos los Archivos',
-    startDate: 'Fecha de Inicio',
-    endDate: 'Fecha de Fin',
     startDatePlaceholder: 'ej., 2024-01-01',
     endDatePlaceholder: 'ej., 2024-12-31',
     // Folder selection translations
@@ -1610,7 +1380,51 @@ const translations = {
     convertingRldToTxt: 'Convirtiendo RLD a TXT...',
     convertingTxtToCsv: 'Convirtiendo TXT a CSV...',
     readyForSelection: 'Listo para selección de archivos',
+    operational: 'Operacional',
+    disabled: 'Deshabilitado',
+    database: 'Base de Datos',
+    bootProgram: 'Iniciar Programa',
+    databaseManagement: 'Gestión de Base de Datos',
+    manageAndVisualize: 'Gestiona y visualiza tus archivos de datos RLD',
+    importRldFile: 'Importar Archivo RLD',
+    totalFiles: 'Archivos Totales',
+    totalRecords: 'Registros Totales',
+    totalSize: 'Tamaño Total',
+    recent30Days: 'Recientes (30 días)',
+    currentFile: 'Archivo Actual',
     // File filter explanations
+    clientName: 'Nombre del Cliente',
+    expiryDate: 'Fecha de Vencimiento',
+    daysRemaining: 'Días Restantes',
+    status: 'Estado',
+    expiringSoon: 'Vence Pronto',
+    invalid: 'Inválido',
+    billingInformation: 'Información de Facturación',
+    subscriptionType: 'Tipo de Suscripción',
+    nextBillingDate: 'Próxima Fecha de Facturación',
+    amount: 'Cantidad',
+    paymentStatus: 'Estado de Pago',
+    paymentMethod: 'Método de Pago',
+    autoRenewal: 'Renovación Automática',
+    usageStatistics: 'Estadísticas de Uso',
+    totalValidations: 'Validaciones Totales',
+    lastUsed: 'Último Uso',
+    sessionCount: 'Conteo de Sesiones',
+    filesProcessed: 'Archivos Procesados',
+    uptime: 'Tiempo de Actividad',
+    monthlyCost: 'Costo Mensual',
+    paid: 'Pagado',
+    pending: 'Pendiente',
+    nextBilling: 'Próxima Facturación',
+    renewalType: 'Tipo de Renovación',
+    auto: 'Automático',
+    manual: 'Manual',
+    healthStatus: 'Estado de Salud',
+    good: 'Bueno',
+    warning: 'Advertencia',
+    critical: 'Crítico',
+    client: 'Cliente',
+    never: 'Nunca',
 
   }
 };
@@ -1648,30 +1462,16 @@ const App = () => {
   });
 
   const [showSettings, setShowSettings] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [availableTags, setAvailableTags] = useState([]);
-  const [backendStatus, setBackendStatus] = useState('connecting');
 
-  // Email configuration state
-  const [emailConfig, setEmailConfig] = useState({
-    enabled: false,
-    smtpServer: '',
-    smtpPort: 587,
-    username: '',
-    password: '',
-    recipientEmail: '',
-    subject: 'NRG DataSense Report'
-  });
+
+  
 
   
   // Settings save status
   const [settingsSaveStatus, setSettingsSaveStatus] = useState({ type: '', message: '' });
 
   // Upload modal state
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadMode, setUploadMode] = useState('txt'); // 'txt' or 'rld'
-  const [uploadStatus, setUploadStatus] = useState({ loading: false, message: '', error: false });
+
   const [currentFile, setCurrentFile] = useState(null);
 
   
@@ -1681,41 +1481,14 @@ const App = () => {
   
   // Data state
   const [filteredData, setFilteredData] = useState([]);
+  
 
-  const [sortConfig, setSortConfig] = useState({ key: 'time', direction: 'asc' });
+
 
   // Cleanup modal state removed - using individual delete buttons instead
 
 
 
-  const filterAndSortData = useCallback((data, search, sort) => {
-    if (!data || data.length === 0) return [];
-    
-    let filtered = data;
-    
-    // Apply search filter
-    if (search) {
-      filtered = data.filter(record => 
-        Object.values(record).some(value => 
-          String(value).toLowerCase().includes(search.toLowerCase())
-        )
-      );
-    }
-    
-    // Apply sorting
-    if (sort.key) {
-      filtered = [...filtered].sort((a, b) => {
-        const aVal = a[sort.key];
-        const bVal = b[sort.key];
-        
-        if (aVal < bVal) return sort.direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return sort.direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-    
-    return filtered;
-  }, []);
 
 
 
@@ -1732,83 +1505,58 @@ const App = () => {
     return filteredData.filter((_, index) => index % step === 0);
   }, [filteredData]);
 
-  // Check backend status
-  useEffect(() => {
-    const checkBackendStatus = async () => {
-      try {
-        // Set connecting status while checking
-        setBackendStatus('connecting');
-        
-        // Use localhost for development, deployed URL for production
-        const backendUrl = process.env.NODE_ENV === 'production' 
-          ? 'https://nrg-datasense-backend.onrender.com'
-          : 'http://localhost:5000';
-        
-        const response = await fetch(`${backendUrl}/health`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          // Add timeout to prevent hanging
-          signal: AbortSignal.timeout(5000)
-        });
-        
-        if (response.ok) {
-          const healthData = await response.json();
-          setBackendStatus('connected');
-          console.log('✅ Backend connected successfully:', healthData);
-        } else {
-          setBackendStatus('error');
-          console.log('❌ Backend health check failed:', response.status);
-        }
-      } catch (error) {
-        console.error('Backend connection error:', error);
-        
-        // More specific error handling
-        if (error.name === 'AbortError') {
-          console.log('⏰ Backend connection timeout - service may be starting up');
-          setBackendStatus('connecting'); // Keep trying if it's a timeout
-        } else if (error.message.includes('Failed to fetch')) {
-          console.log('🌐 Backend not reachable - may not be deployed yet');
-          setBackendStatus('error');
-        } else {
-          setBackendStatus('error');
-        }
-      }
-    };
-
-    console.log('🔍 Checking backend connection...');
-    checkBackendStatus();
-    
-    // Check more frequently initially, then every 30 seconds
-    const initialInterval = setInterval(checkBackendStatus, 5000); // Check every 5 seconds initially
-    setTimeout(() => {
-      clearInterval(initialInterval);
-      const regularInterval = setInterval(checkBackendStatus, 30000); // Then every 30 seconds
-      return () => clearInterval(regularInterval);
-    }, 60000); // After 1 minute, switch to regular interval
-    
-    return () => clearInterval(initialInterval);
-  }, []);
 
   // Load email configuration from localStorage
+
+
+
+
+
+
+
+
+  // Enhanced Library State (moved up to avoid use-before-define error)
+  const [libraryFiles, setLibraryFiles] = useState([]);
+  const [libraryStats, setLibraryStats] = useState({});
+  const [libraryFilters, setLibraryFilters] = useState({
+    search: '',
+    category: '',
+    tags: '',
+    sortBy: 'timestamp',
+    sortOrder: 'desc'
+  });
+  const [libraryPagination, setLibraryPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    pages: 0
+  });
+
+  // Track previous file count for new data notifications
+  const [previousFileCount, setPreviousFileCount] = useState(0);
+  
+  // Monitor for new files and show notifications
   useEffect(() => {
-    const savedEmailConfig = localStorage.getItem('datasenseEmailConfig');
-    if (savedEmailConfig) {
-      try {
-        const config = JSON.parse(savedEmailConfig);
-        setEmailConfig(config);
-      } catch (error) {
-        console.error('Error loading email config:', error);
+    if (libraryStats && libraryStats.total_files > previousFileCount && previousFileCount > 0) {
+      const newFilesCount = libraryStats.total_files - previousFileCount;
+      
+      // Show browser notification for new data
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('DataSense - New Data Available!', {
+          body: `📧 ${newFilesCount} new file(s) processed from email automation\n\nTotal files: ${libraryStats.total_files}\nTotal records: ${libraryStats.total_records.toLocaleString()}`,
+          icon: '/assets/datasense-logo.png',
+          tag: 'new-data'
+        });
       }
+      
+      // Add log entry
+      addLogEntry(`📧 ${newFilesCount} new file(s) automatically processed from email!`, 'success');
     }
-  }, []);
-
-
-
-
-
-
+    
+    if (libraryStats) {
+      setPreviousFileCount(libraryStats.total_files);
+    }
+  }, [libraryStats, previousFileCount]);
 
   // Load library files from database on app start
   useEffect(() => {
@@ -1828,15 +1576,6 @@ const App = () => {
     document.body.style.color = settings.theme === 'light' ? '#000000' : '#ffffff';
   }, [settings.theme]);
 
-  const [libraryData, setLibraryData] = useState({
-    files: [
-      { name: 'station_2024_07_29.rld', records: 1247, date: 'today' },
-      { name: 'station_2024_07_28.rld', records: 1440, date: 'yesterday' },
-      { name: 'station_2024_07_27.rld', records: 1440, date: '2 days ago' }
-    ],
-    totalRecords: 4127,
-    dateRange: { start: '2024-07-27', end: '2024-07-29' }
-  });
   
   const [summary, setSummary] = useState({
     totalRecords: 0,
@@ -1998,9 +1737,6 @@ const App = () => {
       };
     }
 
-    // Try to extract from first record or use defaults
-    const firstRecord = data[0];
-    
     return {
       'Site Number': 'NRG DataSense Site',
       'Location': 'Environmental Monitoring Station',
@@ -2119,87 +1855,6 @@ const App = () => {
 
 
 
-  const handleTXTFileProcessing = async (txtFiles) => {
-    addLogEntry('Processing TXT files for visualization...', 'info');
-    
-    try {
-      let unifiedData = [];
-      
-      for (let i = 0; i < txtFiles.length; i++) {
-        const txtFile = txtFiles[i];
-        addLogEntry(`Processing TXT file ${i + 1}/${txtFiles.length}: ${txtFile.name}`, 'info');
-        
-        // Get file content (either from File object or extracted content)
-        let fileContent;
-        if (txtFile instanceof File) {
-          fileContent = await txtFile.text();
-        } else {
-          fileContent = txtFile.content;
-        }
-        
-        addLogEntry(`File size: ${fileContent.length} characters`, 'info');
-        
-        // Parse file content
-        const lines = fileContent.split('\n').filter(line => line.trim());
-        addLogEntry(`Found ${lines.length} data lines in ${txtFile.name}`, 'info');
-        
-        // Check if this is a SymphoniePRO TXT file
-        const isSymphoniePRO = txtFile.name.toLowerCase().includes('.txt') && 
-          (fileContent.includes('SymphoniePRO') || fileContent.includes('NRG Systems'));
-        
-        if (isSymphoniePRO) {
-          addLogEntry('Detected SymphoniePRO TXT format - parsing meteorological data...', 'info');
-          const fileData = await parseSymphoniePROFile(fileContent, txtFile.name);
-          unifiedData = [...unifiedData, ...fileData];
-        } else {
-          // Process as regular TXT format
-          addLogEntry('Processing as regular TXT format...', 'info');
-          const fileData = await parseRegularTXTFile(fileContent, txtFile.name);
-          unifiedData = [...unifiedData, ...fileData];
-        }
-      }
-      
-      // Update app with unified data
-      if (unifiedData.length > 0) {
-        setRealTimeData(unifiedData);
-        setTimeIndex(0);
-        setHasData(true);
-        
-        // Save to library
-        const libraryEntry = {
-          id: Date.now().toString(),
-          name: `Processed_Data_${new Date().toISOString().split('T')[0]}`,
-          files: txtFiles.map(f => f.name || f),
-          records: unifiedData.length,
-          date: new Date().toISOString(),
-          data: unifiedData,
-          tags: ['TXT', 'Processed', 'Environmental'],
-          summary: {
-            totalRecords: unifiedData.length,
-            sensorCount: 10,
-            fileCount: txtFiles.length,
-            lastUpdate: new Date().toLocaleTimeString()
-          }
-        };
-        
-        setLibraryFiles(prev => [libraryEntry, ...prev]);
-        setSummary({
-          totalRecords: unifiedData.length,
-          sensorCount: 10,
-          fileCount: txtFiles.length,
-          lastUpdate: new Date().toLocaleTimeString()
-        });
-        
-        addLogEntry(`Successfully processed ${txtFiles.length} TXT files with ${unifiedData.length} total records`, 'success');
-      } else {
-        addLogEntry('No valid data found in TXT files', 'error');
-      }
-      
-    } catch (error) {
-      addLogEntry(`TXT file processing failed: ${error.message}`, 'error');
-      throw error;
-    }
-  };
 
   const parseRegularTXTFile = async (fileContent, fileName) => {
     addLogEntry(`Parsing regular TXT file: ${fileName}`, 'info');
@@ -2282,23 +1937,6 @@ const App = () => {
     return fileData;
   };
 
-  const getCurrentSensorValues = () => {
-    if (!realTimeData || realTimeData.length === 0 || !hasData) {
-      return {
-        NRG_40C_Anem: t('noData'),
-        NRG_200M_Vane: t('noData'),
-        NRG_T60_Temp: t('noData'),
-        NRG_RH5X_Humi: t('noData'),
-        NRG_BP60_Baro: t('noData'),
-        Rain_Gauge: t('noData'),
-        NRG_PVT1_PV_Temp: t('noData'),
-        PSM_c_Si_Isc_Soil: t('noData'),
-        PSM_c_Si_Isc_Clean: t('noData'),
-        Average_12V_Battery: t('noData')
-      };
-    }
-    return realTimeData[timeIndex] || realTimeData[(realTimeData || []).length - 1];
-  };
 
   // Get full dataset for charts (showing complete data with exact timestamps) - OPTIMIZED
   const getCurrentChartData = useCallback(() => {
@@ -2308,7 +1946,7 @@ const App = () => {
     
     // Use optimized chart data with downsampling for better performance
     return getOptimizedChartData();
-  }, [filteredData, hasData, getOptimizedChartData]);
+  }, [filteredData, hasData, getOptimizedChartData, t]);
 
   // Get filtered data for analysis window based on time range
   const getAnalysisChartData = () => {
@@ -2445,7 +2083,7 @@ const App = () => {
     });
 
     return stats;
-  }, [realTimeData]);
+  }, [realTimeData, getSensorUnit]);
 
   // Graph enlargement functions
   const handleGraphDoubleClick = (graphType) => {
@@ -2460,19 +2098,6 @@ const App = () => {
   };
 
   // File upload functions
-  const handleFileUpload = async (event) => {
-    const files = Array.from(event.target.files);
-    console.log('Files selected:', files.map(f => f.name));
-    
-    if (files.length > 0) {
-      // Limit to 10 files
-      const limitedFiles = files.slice(0, 10);
-      console.log('Processing files:', limitedFiles.map(f => f.name));
-      setUploadedFiles(limitedFiles);
-      // Automatically start processing with the files directly
-      await processUploadedFiles(limitedFiles);
-    }
-  };
 
   // Auto-process single file with format detection
   const autoProcessFile = async (file) => {
@@ -2497,18 +2122,22 @@ const App = () => {
         setProcessingProgress({ current: 1, total: 1, message: `Processing ${file.name}...` });
         result = await apiService.processTxtFile(file);
         console.log('TXT processing completed:', result);
-      } else {
-        // Convert RLD to TXT first, then process
-        console.log('Converting RLD to TXT first:', file.name);
-        setProcessingProgress({ current: 1, total: 2, message: `Converting ${file.name} to TXT...` });
-        const conversionResult = await apiService.convertRldToTxt(file);
-        console.log('RLD conversion completed:', conversionResult);
+      } else if (isRldFile) {
+        // Process RLD file using new upload-rld endpoint
+        console.log('Processing RLD file with local conversion:', file.name);
+        setProcessingProgress({ current: 1, total: 1, message: `Converting ${file.name} to TXT...` });
+        result = await apiService.uploadRldFile(file);
+        console.log('RLD processing completed:', result);
         
-        setProcessingProgress({ current: 2, total: 2, message: `Processing converted ${file.name}...` });
-        // Create a new file object with the converted content
-        const txtFile = new File([conversionResult.txt_content], file.name.replace('.rld', '.txt'), { type: 'text/plain' });
-        result = await apiService.processTxtFile(txtFile);
-        console.log('Converted file processing completed:', result);
+        // Load the processed data into the dashboard
+        if (result.records_processed > 0) {
+          // Fetch the processed data from the database
+          const dataResult = await apiService.getFileData(result.filename);
+          if (dataResult && dataResult.data) {
+            result.data = dataResult.data;
+            result.summary = dataResult.summary;
+          }
+        }
       }
       
       return result;
@@ -2562,11 +2191,7 @@ const App = () => {
         message += `. ${errorCount} files failed: ${errors.join(', ')}`;
       }
 
-      setUploadStatus({ 
-        loading: false, 
-        message: message, 
-        error: errorCount > 0 
-      });
+      // Upload status removed - using browser notifications instead
 
       // Processing completed
       setIsProcessing(false);
@@ -2612,7 +2237,7 @@ const App = () => {
             const fileInDb = libraryFiles.files.find(f => f.filename === lastProcessedData.filename);
             if (fileInDb) {
               addLogEntry(`✅ Database verification successful: File found in database`, 'success');
-            } else {
+      } else {
               addLogEntry(`⚠️ Database verification failed: File not found in database`, 'warning');
             }
           } catch (error) {
@@ -2624,9 +2249,7 @@ const App = () => {
         }
       }
 
-      // Close upload modal
-      setShowUploadModal(false);
-      setUploadedFiles([]);
+      // Upload modal removed - using direct processing instead
 
     } catch (error) {
       console.error('Error processing files:', error);
@@ -2635,13 +2258,297 @@ const App = () => {
     }
   };
 
-  const closeUploadModal = () => {
-    setShowUploadModal(false);
-    setUploadedFiles([]);
-    setUploadStatus({ loading: false, message: '', error: false });
+  // Upload modal functions removed - using direct processing instead
+
+  // Email automation status
+  const [emailAutomationStatus, setEmailAutomationStatus] = useState('not_configured');
+  
+  // System status for boot program
+  const [systemStatus, setSystemStatus] = useState('idle'); // 'idle', 'booting', 'running', 'error'
+  
+  // Comprehensive system status
+  const [systemStatuses, setSystemStatuses] = useState({
+    frontend: 'running',
+    backend: 'unknown',
+    emailAutomation: 'not_configured',
+    rldProcessing: 'idle',
+    database: 'unknown'
+  });
+  
+  // Last update time for status panel
+  const [lastStatusUpdate, setLastStatusUpdate] = useState(null);
+  
+  // Comprehensive system status check
+  const checkSystemStatuses = async () => {
+    const newStatuses = { ...systemStatuses };
+    
+    try {
+      // Check backend status with timeout
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch('http://localhost:5000/health', { 
+          method: 'GET',
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          newStatuses.backend = 'running';
+      } else {
+          newStatuses.backend = 'error';
+        }
+      } catch (error) {
+        console.log('Backend status check failed:', error.message);
+        newStatuses.backend = 'error';
+      }
+      
+      // Check email automation status
+      try {
+        const status = await emailService.getEmailStatus();
+        newStatuses.emailAutomation = status.running ? 'running' : 'not_configured';
+        setEmailAutomationStatus(status.running ? 'running' : 'not_configured');
+      } catch (error) {
+        console.log('Email automation status check failed:', error.message);
+        newStatuses.emailAutomation = 'error';
+        setEmailAutomationStatus('error');
+      }
+      
+      
+      // Check database with timeout
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const response = await fetch('http://localhost:5000/api/library/stats', { 
+          method: 'GET',
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          newStatuses.database = 'running';
+        } else {
+          newStatuses.database = 'error';
+        }
+      } catch (error) {
+        console.log('Database status check failed:', error.message);
+        newStatuses.database = 'error';
+      }
+      
+      // Update RLD processing status based on system status
+      newStatuses.rldProcessing = systemStatus === 'running' ? 'active' : 'idle';
+      
+      setSystemStatuses(newStatuses);
+      setLastStatusUpdate(new Date().toLocaleTimeString());
+      
+      // Also update system status based on email automation status
+      if (newStatuses.emailAutomation === 'running' && systemStatus === 'idle') {
+        setSystemStatus('running');
+      }
+      
+    } catch (error) {
+      console.error('Error checking system statuses:', error);
+    }
+  };
+  
+  // Check system statuses periodically
+  useEffect(() => {
+    checkSystemStatuses();
+    const statusInterval = setInterval(checkSystemStatuses, 10000); // Check every 10 seconds
+    
+    return () => clearInterval(statusInterval);
+  }, [systemStatus]);
+
+
+  // Boot Program Function
+  const bootProgram = async () => {
+    try {
+      console.log('🚀 Booting DataSense program...');
+      
+      // Set system status to booting
+      setSystemStatus('booting');
+      
+      // Show loading state
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('DataSense', {
+          body: '🚀 Starting DataSense program...',
+          icon: '/assets/datasense-logo.png'
+        });
+      }
+      
+      // Start email automation
+      const result = await emailService.startEmailAutomation();
+      console.log('✅ Program booted successfully:', result);
+      
+      // Set system status to running
+      setSystemStatus('running');
+      
+      // Show success notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('DataSense', {
+            body: '✅ DataSense program booted successfully! Email automation started.',
+            icon: '/assets/datasense-logo.png'
+          });
+        }
+        
+        // Show detailed success message
+        const successMessage = `✅ DataSense program booted successfully!
+
+Email automation is now running and will automatically:
+• Scan for new NRG data files every 5 minutes
+• Convert RLD files using nrgpy local conversion
+• Process and display data in real-time
+• Store everything in the database
+
+Status: ${result.message}
+Email: ${result.email}
+Scan Interval: ${result.scan_interval} seconds
+
+The system will now automatically process any new NRG data files that arrive via email!`;
+        
+        alert(successMessage);
+      
+    } catch (error) {
+      console.error('❌ Error booting program:', error);
+      
+      // Set system status to error
+      setSystemStatus('error');
+      
+      let errorMessage = 'Failed to boot program';
+        if (error.message.includes('credentials') || error.message.includes('config')) {
+          errorMessage = 'Email credentials not configured.\n\nPlease contact the administrator to set up the following credentials in the backend:\n• Email server and credentials\n\nOnce configured, the Boot Program button will start the automated email processing with local RLD conversion.';
+      } else if (error.message.includes('503')) {
+        errorMessage = 'Email automation service not available.\n\nPlease try again later or contact the administrator if the issue persists.';
+      } else {
+        errorMessage = `Error: ${error.message}`;
+      }
+      
+      // Show error notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('DataSense Error', {
+          body: '❌ Failed to boot program - check alert for details',
+          icon: '/assets/datasense-logo.png'
+        });
+      }
+      
+      alert(`❌ ${errorMessage}`);
+    }
   };
 
+  // Reset System Status Function
+  const resetSystemStatus = () => {
+    setSystemStatus('idle');
+    console.log('🔄 System status reset to idle');
+  };
+
+
   // Cleanup functions removed - using individual delete buttons instead
+
+  // Manual File Import Function
+  const handleManualFileImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.rld';
+    input.multiple = false;
+    
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      if (!file.name.toLowerCase().endsWith('.rld')) {
+        alert('Please select a valid RLD file');
+        return;
+      }
+      
+      try {
+        console.log('📁 Manual RLD file import started:', file.name);
+        
+        // Show loading state
+        const loadingMessage = `🔄 Processing ${file.name}...\n\nConverting RLD to TXT using nrgpy local conversion...`;
+        alert(loadingMessage);
+        
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        // Upload and process RLD file
+        const response = await fetch('http://localhost:5000/api/upload-rld', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('✅ RLD file processed successfully:', result);
+        
+        // Show success message
+        const successMessage = `✅ File imported successfully!\n\nFile: ${result.filename}\nRecords: ${result.records_processed}\nMethod: ${result.conversion_method}\n\nData has been added to the database and will appear on the dashboard.`;
+        alert(successMessage);
+        
+        // Refresh library files to show the new file
+        await loadLibraryFiles();
+        
+        // Switch to dashboard to show the data
+        setCurrentView('dashboard');
+        
+        // Load the processed data from database
+        await loadDataFromDatabase(result.filename);
+        
+      } catch (error) {
+        console.error('❌ Error importing RLD file:', error);
+        alert(`❌ Error importing file: ${error.message}\n\nPlease ensure the backend is running and the file is a valid RLD file.`);
+      }
+    };
+    
+    input.click();
+  };
+
+  // Load data from database by filename
+  const loadDataFromDatabase = async (filename) => {
+    try {
+      console.log('📊 Loading data from database for file:', filename);
+      
+      // Get the file ID from library files
+      const file = libraryFiles.find(f => f.filename === filename || f.name === filename);
+      if (!file) {
+        console.error('File not found in library:', filename);
+        return;
+      }
+      
+      // Load data from database using the file ID
+      const response = await fetch(`http://localhost:5000/api/data/${file.id}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ Data loaded from database:', result);
+      
+      // Set the loaded data
+      setRealTimeData(result.data);
+      setCurrentFile({
+        filename: result.filename,
+        id: result.fileMetadata.id,
+        records: result.records
+      });
+      
+      // Update system status
+      setSystemStatus('running');
+      
+      console.log(`✅ Loaded ${result.records} records from ${result.filename}`);
+      
+    } catch (error) {
+      console.error('❌ Error loading data from database:', error);
+      alert(`❌ Error loading data: ${error.message}`);
+    }
+  };
 
 // PDF Report Generation
 const generatePDFReport = (data, timeRange, fileName) => {
@@ -2765,32 +2672,10 @@ const generatePDFReport = (data, timeRange, fileName) => {
         addLogEntry(`${t('pdfReportGenerated')}: ${pdfFileName}`, 'success');
 };
 
-  // Enhanced Library State
-  const [libraryFiles, setLibraryFiles] = useState([]);
-  const [libraryStats, setLibraryStats] = useState({});
-  const [libraryFilters, setLibraryFilters] = useState({
-    search: '',
-    category: '',
-    tags: '',
-    sortBy: 'timestamp',
-    sortOrder: 'desc'
-  });
-  const [libraryPagination, setLibraryPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    pages: 0
-  });
-  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
-  const [libraryCategories] = useState([
-    'general', 'wind', 'solar', 'temperature', 'humidity', 'pressure', 'rainfall', 'battery'
-  ]);
 
   // Enhanced Library Functions
   const loadLibraryFiles = async (filters = libraryFilters, pagination = libraryPagination) => {
     try {
-      setIsLoadingLibrary(true);
-      
       const params = {
         ...filters,
         page: pagination.page,
@@ -2809,8 +2694,6 @@ const generatePDFReport = (data, timeRange, fileName) => {
     } catch (error) {
       console.error('Error loading library files:', error);
       addLogEntry(`Error loading library: ${error.message}`, 'error');
-    } finally {
-      setIsLoadingLibrary(false);
     }
   };
 
@@ -2858,49 +2741,6 @@ const generatePDFReport = (data, timeRange, fileName) => {
 
 
 
-  const updateLibraryFile = async (fileId, updates) => {
-    try {
-      await libraryService.updateLibraryFile(fileId, updates);
-      addLogEntry('File metadata updated', 'success');
-      
-      // Refresh library
-      await loadLibraryFiles();
-    } catch (error) {
-      console.error('Error updating library file:', error);
-      addLogEntry(`Error updating file: ${error.message}`, 'error');
-    }
-  };
-
-  const exportLibraryFile = async (fileId, format = 'json') => {
-    try {
-      const result = await libraryService.exportLibraryFile(fileId, format);
-      
-      if (format === 'csv') {
-        // Download CSV file
-        const blob = new Blob([result.csv_data], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = result.filename;
-        a.click();
-        window.URL.revokeObjectURL(url);
-      } else {
-        // Download JSON file
-        const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `file_${fileId}.json`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-      }
-      
-      addLogEntry(`File exported as ${format.toUpperCase()}`, 'success');
-    } catch (error) {
-      console.error('Error exporting file:', error);
-      addLogEntry(`Error exporting file: ${error.message}`, 'error');
-    }
-  };
 
   // Load file from database on double click
   const handleFileDoubleClick = async (file) => {
@@ -2916,13 +2756,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
       }
       
       // Get data from backend
-      const response = await fetch(`${process.env.NODE_ENV === 'production' ? 'https://nrg-datasense-backend.onrender.com' : 'http://localhost:5000'}/api/data/${file.id}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const result = await response.json();
+      const result = await libraryService.getFileData(file.id);
       
       if (result.data && result.data.length > 0) {
         // Set the data like a regular file upload
@@ -2972,22 +2806,22 @@ const generatePDFReport = (data, timeRange, fileName) => {
 
 
 
-  const handleFilterChange = (newFilters) => {
-    setLibraryFilters(newFilters);
-    setLibraryPagination(prev => ({ ...prev, page: 1 }));
-    loadLibraryFiles(newFilters, { ...libraryPagination, page: 1 });
-  };
 
-  const handlePageChange = (newPage) => {
-    setLibraryPagination(prev => ({ ...prev, page: newPage }));
-    loadLibraryFiles(libraryFilters, { ...libraryPagination, page: newPage });
-  };
 
-  // Load library on component mount
+
+  // Load library on component mount and set up auto-refresh for autonomous operation
   useEffect(() => {
     loadLibraryFiles();
     loadLibraryStats();
-  }, []);
+    
+    // Set up auto-refresh for new data every 30 seconds to catch email automation results
+    const autoRefreshInterval = setInterval(() => {
+      loadLibraryFiles();
+      loadLibraryStats();
+    }, 30000); // Refresh every 30 seconds to catch new email-processed files
+    
+    return () => clearInterval(autoRefreshInterval);
+  }, [loadLibraryFiles, loadLibraryStats]);
 
   return (
     <AppContainer>
@@ -3045,6 +2879,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
           </div>
         </HeaderLeft>
         <HeaderRight>
+          
           <NavButton 
             active={currentView === 'dashboard'}
             onClick={() => setCurrentView('dashboard')}
@@ -3057,7 +2892,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
               onClick={() => setCurrentView('library')}
             >
               <FiDatabase />
-              Database
+              {t('database')}
           </NavButton>
           <NavButton 
             onClick={() => setShowSettings(true)}
@@ -3086,25 +2921,43 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 </div>
                 
                 <InteractiveControls>
-                  <UploadButton>
+                  <ControlButton 
+                    onClick={handleManualFileImport}
+                    title="Import RLD File"
+                  >
                     <FiUpload />
-                    Upload Files
-                    <input
-                      type="file"
-                      accept=".txt,.rld"
-                      multiple
-                      onChange={handleFileUpload}
-                    />
-                  </UploadButton>
+                    {t('importRldFile')}
+                  </ControlButton>
                   
-                  <NavButton>
-                    <StatusIndicator status={backendStatus}>
-                      <StatusDot status={backendStatus} />
-                      {backendStatus === 'connected' ? 'Connected' : 
-                       backendStatus === 'connecting' ? 'Connecting...' : 
-                       'Not Deployed'}
-                    </StatusIndicator>
-                  </NavButton>
+                  <ControlButton 
+                    onClick={bootProgram}
+                    title="Boot DataSense Program"
+                    disabled={systemStatus === 'booting' || systemStatus === 'running'}
+                    style={{
+                      opacity: (systemStatus === 'booting' || systemStatus === 'running') ? 0.6 : 1,
+                      cursor: (systemStatus === 'booting' || systemStatus === 'running') ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    <FiPlay />
+                    {systemStatus === 'booting' ? 'Booting...' : 
+                     systemStatus === 'running' ? 'Running' : 
+                     t('bootProgram')}
+                  </ControlButton>
+                  
+                  {(systemStatus === 'running' || systemStatus === 'error') && (
+                    <ControlButton 
+                      onClick={resetSystemStatus}
+                      title="Reset System Status"
+                      style={{
+                        backgroundColor: '#21262d',
+                        border: '1px solid #30363d'
+                      }}
+                    >
+                      <FiRotateCcw />
+                      Reset
+                    </ControlButton>
+                  )}
+                  
                   
                   {/* Search Input */}
 
@@ -3128,6 +2981,79 @@ const generatePDFReport = (data, timeRange, fileName) => {
 
                 </InteractiveControls>
               </DashboardHeader>
+
+              {/* System Status Panel */}
+              <StatusPanel>
+                <StatusPanelTitle>
+                  <FiAlertCircle />
+                  System Status
+                  {lastStatusUpdate && (
+                    <span style={{
+                      marginLeft: 'auto',
+                      fontSize: '12px',
+                      color: '#8b949e',
+                      fontWeight: 'normal'
+                    }}>
+                      Last updated: {lastStatusUpdate}
+                    </span>
+                  )}
+                </StatusPanelTitle>
+                <StatusGrid>
+                  <StatusItem>
+                    <StatusIndicator status={systemStatuses.frontend} />
+                    <StatusText>
+                      <StatusLabel>Frontend</StatusLabel>
+                      <StatusValue status={systemStatuses.frontend}>
+                        {systemStatuses.frontend === 'running' ? 'Running' : 'Error'}
+                      </StatusValue>
+                    </StatusText>
+                  </StatusItem>
+                  
+                  <StatusItem>
+                    <StatusIndicator status={systemStatuses.backend} />
+                    <StatusText>
+                      <StatusLabel>Backend API</StatusLabel>
+                      <StatusValue status={systemStatuses.backend}>
+                        {systemStatuses.backend === 'running' ? 'Running' : 
+                         systemStatuses.backend === 'error' ? 'Error' : 'Unknown'}
+                      </StatusValue>
+                    </StatusText>
+                  </StatusItem>
+                  
+                  <StatusItem>
+                    <StatusIndicator status={systemStatuses.emailAutomation} />
+                    <StatusText>
+                      <StatusLabel>Email Automation</StatusLabel>
+                      <StatusValue status={systemStatuses.emailAutomation}>
+                        {systemStatuses.emailAutomation === 'running' ? 'Running' : 
+                         systemStatuses.emailAutomation === 'not_configured' ? 'Not Configured' : 'Error'}
+                      </StatusValue>
+                    </StatusText>
+                  </StatusItem>
+                  
+                  <StatusItem>
+                    <StatusIndicator status={systemStatuses.rldProcessing} />
+                    <StatusText>
+                      <StatusLabel>RLD Processing</StatusLabel>
+                      <StatusValue status={systemStatuses.rldProcessing}>
+                        {systemStatuses.rldProcessing === 'active' ? 'Active' : 'Idle'}
+                      </StatusValue>
+                    </StatusText>
+                  </StatusItem>
+                  
+                  
+                  <StatusItem>
+                    <StatusIndicator status={systemStatuses.database} />
+                    <StatusText>
+                      <StatusLabel>Database</StatusLabel>
+                      <StatusValue status={systemStatuses.database}>
+                        {systemStatuses.database === 'running' ? 'Running' : 
+                         systemStatuses.database === 'error' ? 'Error' : 'Unknown'}
+                      </StatusValue>
+                    </StatusText>
+                  </StatusItem>
+                </StatusGrid>
+              </StatusPanel>
 
               {/* Site Properties */}
               <SitePropertiesCard>
@@ -3169,11 +3095,11 @@ const generatePDFReport = (data, timeRange, fileName) => {
               <DataStats>
                 <DataStatItem>
                   <DataStatValue>{hasData && realTimeData && realTimeData.length > 0 ? Object.keys(realTimeData[0]).filter(key => key !== 'time' && key !== 'timestamp').length : '0'}</DataStatValue>
-                  <StatLabel>Active Sensors</StatLabel>
+                  <StatLabel>{t('activeSensors')}</StatLabel>
                 </DataStatItem>
                 <DataStatItem>
                   <DataStatValue>{hasData && realTimeData ? realTimeData.length.toLocaleString() : '0'}</DataStatValue>
-                  <StatLabel>Total Records</StatLabel>
+                  <StatLabel>{t('totalRecords')}</StatLabel>
                 </DataStatItem>
                 <DataStatItem>
                   <DataStatValue>{hasData && realTimeData && realTimeData.length > 0 ? (realTimeData[0].timestamp ? new Date(realTimeData[0].timestamp).toLocaleDateString() : 'N/A') : 'N/A'}</DataStatValue>
@@ -3185,7 +3111,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 </DataStatItem>
                 <DataStatItem>
                   <DataStatValue>{hasData && realTimeData && realTimeData.length > 0 ? (currentFile ? (currentFile.filename || currentFile.name) : 'Unknown') : 'Unknown'}</DataStatValue>
-                  <StatLabel>Current File</StatLabel>
+                  <StatLabel>{t('currentFile')}</StatLabel>
                 </DataStatItem>
               </DataStats>
 
@@ -3471,12 +3397,10 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 <div>
                   <DashboardTitle>
                     <FiDatabase />
-                    Database Management
+                    {t('databaseManagement')}
                   </DashboardTitle>
-                  <DashboardSubtitle>Manage and visualize your RLD data files</DashboardSubtitle>
+                  <DashboardSubtitle>{t('manageAndVisualize')}</DashboardSubtitle>
                 </div>
-                
-
               </DashboardHeader>
 
 
@@ -3485,33 +3409,26 @@ const generatePDFReport = (data, timeRange, fileName) => {
               <LibraryStats>
                 <LibraryStatCard>
                   <LibraryStatValue>{libraryStats.total_files || '0'}</LibraryStatValue>
-                  <LibraryStatLabel>Total Files</LibraryStatLabel>
+                  <LibraryStatLabel>{t('totalFiles')}</LibraryStatLabel>
                 </LibraryStatCard>
                 <LibraryStatCard>
                   <LibraryStatValue>{libraryStats.total_records?.toLocaleString() || '0'}</LibraryStatValue>
-                  <LibraryStatLabel>Total Records</LibraryStatLabel>
+                  <LibraryStatLabel>{t('totalRecords')}</LibraryStatLabel>
                 </LibraryStatCard>
                 <LibraryStatCard>
                   <LibraryStatValue>{libraryStats.total_size_mb || '0'} MB</LibraryStatValue>
-                  <LibraryStatLabel>Total Size</LibraryStatLabel>
+                  <LibraryStatLabel>{t('totalSize')}</LibraryStatLabel>
                 </LibraryStatCard>
                 <LibraryStatCard>
                   <LibraryStatValue>{libraryStats.recent_files_30_days || '0'}</LibraryStatValue>
-                  <LibraryStatLabel>Recent (30 days)</LibraryStatLabel>
+                  <LibraryStatLabel>{t('recent30Days')}</LibraryStatLabel>
                 </LibraryStatCard>
               </LibraryStats>
 
-              {/* Loading State */}
-              {isLoadingLibrary && (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#8b949e' }}>
-                  <LoadingSpinner style={{ width: '32px', height: '32px', margin: '0 auto 16px' }} />
-                  Loading library files...
-                </div>
-              )}
 
               {/* Library Files Grid */}
               <LibraryGrid>
-                {!isLoadingLibrary && libraryFiles.length === 0 ? (
+                {libraryFiles.length === 0 ? (
                   <EmptyState>
                     <FiFolder />
                     <h3>No files found</h3>
@@ -3568,6 +3485,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
               </LibraryGrid>
             </DashboardView>
           )}
+
 
         </ContentArea>
       </MainContent>
@@ -4012,11 +3930,16 @@ const generatePDFReport = (data, timeRange, fileName) => {
               ))}
             </SettingsSection>
 
+
+
+
+
             {settingsSaveStatus.message && (
               <SettingsStatus type={settingsSaveStatus.type}>
                 {settingsSaveStatus.message}
               </SettingsStatus>
             )}
+
             
             <ButtonGroup>
               <SettingsButton onClick={saveSettings}>

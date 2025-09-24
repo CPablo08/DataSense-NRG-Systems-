@@ -21,6 +21,20 @@ from sqlalchemy.orm import Session
 # Import database
 from database import get_db, create_tables, FileMetadata, SensorData
 
+# Import email automation service
+try:
+    from email_service import start_email_automation, stop_email_automation, get_email_service_status, test_database_connection, manual_scan_for_data
+    from config import EMAIL_CONFIG, NRG_LOCAL_CONFIG
+    print("✅ Email automation service imported successfully")
+except ImportError as e:
+    print(f"⚠️ Email automation service not available: {e}")
+    start_email_automation = None
+    stop_email_automation = None
+    get_email_service_status = None
+    test_database_connection = None
+    manual_scan_for_data = None
+
+
 # Import NRG library
 try:
     import nrgpy
@@ -85,34 +99,35 @@ def setup_directories():
         Path(dir_name).mkdir(exist_ok=True)
         logger.info(f"Created directory: {dir_name}")
 
-def convert_rld_to_txt(rld_file_path: str, output_folder: str = "./converted") -> str:
-    """Convert RLD file to TXT using local nrgpy"""
+def convert_rld_to_txt_local(rld_file_path: str, output_folder: str = "./converted") -> str:
+    """Convert RLD file to TXT using nrgpy local conversion"""
     try:
-        logger.info(f"Converting {rld_file_path} to TXT...")
+        logger.info(f"Converting {rld_file_path} to TXT using nrgpy local...")
         
-        # Use nrgpy.local_rld for local conversion
-        converter = nrgpy.local_rld(
-            rld_dir=os.path.dirname(rld_file_path),
-            out_dir=output_folder,
-            file_filter="000110"
+        # Ensure output directory exists
+        os.makedirs(output_folder, exist_ok=True)
+        
+        # Use nrgpy local conversion
+        converter = nrgpy.convert_rld_to_txt(
+            rld_file_path,
+            output_folder,
+            unzip=True,
+            progress_bar=False
         )
         
-        # Convert the file
-        converter.convert()
-        
         # Find the converted TXT file
-        txt_file = rld_file_path.replace('.rld', '.txt')
-        txt_file = os.path.join(output_folder, os.path.basename(txt_file))
+        txt_filename = os.path.basename(rld_file_path).replace('.rld', '.txt')
+        txt_file_path = os.path.join(output_folder, txt_filename)
         
-        if os.path.exists(txt_file):
-            logger.info(f"Successfully converted {rld_file_path} to {txt_file}")
-            return txt_file
+        if os.path.exists(txt_file_path):
+            logger.info(f"Successfully converted {rld_file_path} to {txt_file_path}")
+            return txt_file_path
         else:
             logger.warning(f"TXT file not found for {rld_file_path}")
             return None
             
     except Exception as e:
-        logger.error(f"Error converting {rld_file_path}: {e}")
+        logger.error(f"Error converting {rld_file_path} with nrgpy local: {e}")
         return None
 
 def process_txt_file(txt_file: str) -> List[Dict]:
@@ -288,7 +303,6 @@ def save_file_metadata(metadata: Dict, db: Session):
             processing_date=metadata["processing_date"],
             status=metadata["status"],
             tags=metadata.get("tags", []),
-            site_properties=metadata.get("site_properties", {}),
             source=metadata.get("source", "backend")
         )
         db.add(db_metadata)
@@ -350,6 +364,7 @@ async def health_check():
         "monitoring": is_monitoring
     }
 
+
 @app.post("/api/process-rld")
 async def process_rld_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """Process uploaded RLD file"""
@@ -361,9 +376,9 @@ async def process_rld_file(file: UploadFile = File(...), db: Session = Depends(g
             buffer.write(content)
         
         # Convert RLD to TXT
-        txt_file = convert_rld_to_txt(upload_path)
+        txt_file = convert_rld_to_txt_local(upload_path)
         if not txt_file:
-            raise HTTPException(status_code=400, detail="Failed to convert RLD file")
+            raise HTTPException(status_code=400, detail="Failed to convert RLD file using local conversion")
         
         # Process TXT file
         new_data = process_txt_file(txt_file)
@@ -387,11 +402,7 @@ async def process_rld_file(file: UploadFile = File(...), db: Session = Depends(g
             "status": "processed"
         }
         
-        # Extract site properties from converted TXT file
-        site_properties = extract_site_properties(txt_file) if txt_file else {}
-        
-        # Save file metadata to database with site properties
-        file_metadata['site_properties'] = site_properties
+        # Save file metadata to database
         save_file_metadata(file_metadata, db)
         
         # Save sensor data to database
@@ -470,11 +481,7 @@ async def process_txt_file_upload(file: UploadFile = File(...), db: Session = De
             "source": "txt_upload"
         }
         
-        # Extract site properties
-        site_properties = extract_site_properties(upload_path)
-        
-        # Save file metadata to database with site properties
-        file_metadata['site_properties'] = site_properties
+        # Save file metadata to database
         save_file_metadata(file_metadata, db)
         
         # Save sensor data to database
@@ -505,6 +512,9 @@ async def process_txt_file_upload(file: UploadFile = File(...), db: Session = De
             "data": new_data,
             "timestamp": datetime.now().isoformat()
         })
+        
+        # Extract site properties
+        site_properties = extract_site_properties(upload_path)
         
         # Create summary for the processed data
         summary = {
@@ -539,9 +549,9 @@ async def convert_rld_to_txt_endpoint(file: UploadFile = File(...)):
             buffer.write(content)
         
         # Convert RLD to TXT
-        txt_file = convert_rld_to_txt(upload_path)
+        txt_file = convert_rld_to_txt_local(upload_path)
         if not txt_file:
-            raise HTTPException(status_code=400, detail="Failed to convert RLD file")
+            raise HTTPException(status_code=400, detail="Failed to convert RLD file using local conversion")
         
         # Read the converted TXT file
         with open(txt_file, 'r') as f:
@@ -614,7 +624,7 @@ async def get_data_by_file_id(file_id: int, db: Session = Depends(get_db)):
             "data": data,
             "filename": file_metadata.filename,
             "records": len(data),
-            "siteProperties": file_metadata.site_properties if hasattr(file_metadata, 'site_properties') and file_metadata.site_properties else extract_site_properties_from_data(data) if data else {},
+            "siteProperties": extract_site_properties_from_data(data) if data else {},
             "fileMetadata": {
                 "id": file_metadata.id,
                 "filename": file_metadata.filename,
@@ -723,6 +733,98 @@ async def upload_data(filename: str, content: str, new_data: List[Dict], db: Ses
         }
     except Exception as e:
         logger.error(f"Error uploading data: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/upload-rld")
+async def upload_rld_file(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Upload and convert RLD file using local nrgpy library"""
+    try:
+        # Validate file type
+        if not file.filename.lower().endswith('.rld'):
+            raise HTTPException(status_code=400, detail="Only .rld files are supported")
+        
+        # Create uploads directory if it doesn't exist
+        upload_dir = Path("uploads")
+        upload_dir.mkdir(exist_ok=True)
+        
+        # Save uploaded RLD file
+        rld_file_path = upload_dir / file.filename
+        with open(rld_file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        logger.info(f"Saved RLD file: {rld_file_path}")
+        
+        # Convert RLD to TXT using nrgpy local
+        try:
+            logger.info("Using nrgpy local for RLD conversion")
+            txt_file_path = convert_rld_to_txt_local(
+                str(rld_file_path), 
+                "./converted"
+            )
+            
+            if not txt_file_path or not Path(txt_file_path).exists():
+                raise HTTPException(status_code=500, detail="Failed to convert RLD file to TXT")
+            
+            # Process the converted TXT file
+            processed_data = process_txt_file(str(txt_file_path))
+            
+            if not processed_data:
+                raise HTTPException(status_code=500, detail="Failed to process converted TXT file")
+            
+            # Save to database
+            filename = file.filename
+            for record in processed_data:
+                sensor_record = SensorData(
+                    file_source=filename,
+                    time=record.get('time', ''),
+                    timestamp=datetime.fromisoformat(record.get('timestamp', datetime.now().isoformat())),
+                    NRG_40C_Anem=record.get('NRG_40C_Anem'),
+                    NRG_200M_Vane=record.get('NRG_200M_Vane'),
+                    NRG_T60_Temp=record.get('NRG_T60_Temp'),
+                    NRG_RH5X_Humi=record.get('NRG_RH5X_Humi'),
+                    NRG_BP60_Baro=record.get('NRG_BP60_Baro'),
+                    Rain_Gauge=record.get('Rain_Gauge'),
+                    NRG_PVT1_PV_Temp=record.get('NRG_PVT1_PV_Temp'),
+                    PSM_c_Si_Isc_Soil=record.get('PSM_c_Si_Isc_Soil'),
+                    PSM_c_Si_Isc_Clean=record.get('PSM_c_Si_Isc_Clean'),
+                    Average_12V_Battery=record.get('Average_12V_Battery')
+                )
+                db.add(sensor_record)
+            
+            db.commit()
+            
+            # Add to library
+            file_metadata = FileMetadata(
+                filename=filename,
+                file_size=len(content),
+                records_count=len(processed_data),
+                file_type="RLD",
+                upload_date=datetime.now(),
+                category="raw_data",
+                description=f"RLD file converted to TXT with {len(processed_data)} records"
+            )
+            db.add(file_metadata)
+            db.commit()
+            
+            logger.info(f"Successfully processed RLD file: {filename} with {len(processed_data)} records")
+            
+            return {
+                "message": "RLD file uploaded and converted successfully",
+                "filename": filename,
+                "records_processed": len(processed_data),
+                "conversion_method": "local"
+            }
+            
+        except Exception as conversion_error:
+            logger.error(f"Error during RLD conversion: {conversion_error}")
+            raise HTTPException(status_code=500, detail=f"Conversion failed: {str(conversion_error)}")
+            
+    except Exception as e:
+        logger.error(f"Error uploading RLD file: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.websocket("/ws")
@@ -1192,8 +1294,133 @@ def ensure_file_registered_to_database(filename: str, records_count: int, file_s
             db.rollback()
         return None
 
+# Email Automation Endpoints
+
+@app.post("/api/email/start")
+async def start_email_service():
+    """Start the email automation service with hardcoded credentials"""
+    try:
+        if not start_email_automation:
+            raise HTTPException(status_code=503, detail="Email automation service not available")
+        
+        # Check if credentials are configured (not placeholder values)
+        if (EMAIL_CONFIG["username"] == "your-email@gmail.com" or 
+            EMAIL_CONFIG["password"] == "your-app-password"):
+            raise HTTPException(status_code=400, detail="Email credentials not configured. Please contact administrator to set up credentials.")
+        
+        # Use hardcoded configuration (local conversion doesn't need NRG Cloud credentials)
+        email_config = {
+            "server": EMAIL_CONFIG["server"],
+            "username": EMAIL_CONFIG["username"],
+            "password": EMAIL_CONFIG["password"],
+            "scan_interval": EMAIL_CONFIG["scan_interval"]
+        }
+        
+        service = start_email_automation(email_config)
+        return {
+            "message": "Email automation service started successfully",
+            "email": EMAIL_CONFIG["username"],
+            "scan_interval": EMAIL_CONFIG["scan_interval"]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting email service: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/email/stop")
+async def stop_email_service():
+    """Stop the email automation service"""
+    try:
+        if not stop_email_automation:
+            raise HTTPException(status_code=503, detail="Email automation service not available")
+        
+        stop_email_automation()
+        return {"message": "Email automation service stopped successfully"}
+    except Exception as e:
+        logger.error(f"Error stopping email service: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/email/status")
+async def get_email_status():
+    """Get the current status of the email automation service"""
+    try:
+        if not get_email_service_status:
+            return {
+                "running": False,
+                "status": "service_not_available",
+                "message": "Email automation service not available"
+            }
+        
+        # Check if credentials are configured
+        if (EMAIL_CONFIG["username"] == "your-email@gmail.com" or 
+            EMAIL_CONFIG["password"] == "your-app-password"):
+            return {
+                "running": False,
+                "status": "not_configured",
+                "message": "Email credentials not configured"
+            }
+        
+        return get_email_service_status()
+    except Exception as e:
+        logger.error(f"Error getting email service status: {e}")
+        return {
+            "running": False,
+            "status": "error",
+            "message": str(e)
+        }
+
+@app.get("/api/email/test-database")
+async def test_email_database_connection():
+    """Test if the email service can connect to the database"""
+    try:
+        if not test_database_connection:
+            return {
+                "success": False,
+                "message": "Database connection test not available"
+            }
+        
+        success = test_database_connection()
+        return {
+            "success": success,
+            "message": "Database connection successful" if success else "Database connection failed"
+        }
+    except Exception as e:
+        logger.error(f"Error testing database connection: {e}")
+        return {
+            "success": False,
+            "message": f"Database connection test failed: {str(e)}"
+        }
+
+@app.post("/api/email/manual-scan")
+async def trigger_manual_email_scan():
+    """Manually trigger email scan for new data (useful for testing)"""
+    try:
+        if not manual_scan_for_data:
+            raise HTTPException(status_code=503, detail="Manual scan not available")
+        
+        success = manual_scan_for_data()
+        if success:
+            return {
+                "message": "Manual email scan triggered successfully",
+                "status": "success"
+            }
+        else:
+            return {
+                "message": "Manual email scan failed",
+                "status": "error"
+            }
+    except Exception as e:
+        logger.error(f"Error triggering manual scan: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Setup directories
 setup_directories()
+
+
+# =============================================================================
+# APPLICATION INITIALIZATION
+# =============================================================================
 
 # Initialize database tables
 create_tables()

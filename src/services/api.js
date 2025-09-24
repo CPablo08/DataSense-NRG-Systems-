@@ -31,7 +31,7 @@ class ApiService {
     }
   }
 
-  // Convert RLD files to TXT format
+  // Convert RLD files to TXT format (local conversion)
   async convertRLDFiles(files, config) {
     try {
       const formData = new FormData();
@@ -41,10 +41,7 @@ class ApiService {
         formData.append('files', file);
       });
       
-      // Add configuration
-      formData.append('client_id', config.client_id);
-      formData.append('client_secret', config.client_secret);
-      
+      // No cloud credentials needed for local conversion
       if (config.file_filter) {
         formData.append('file_filter', config.file_filter);
       }
@@ -57,25 +54,25 @@ class ApiService {
         formData.append('end_date', config.end_date);
       }
 
-      const response = await fetch(`${this.baseURL}/convert-rld`, {
+      const response = await fetch(`${this.baseURL}/api/convert-rld-to-txt`, {
         method: 'POST',
         body: formData,
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Conversion failed');
+        throw new Error(errorData.detail || 'Local RLD conversion failed');
       }
 
-      // Return the blob for download
-      return await response.blob();
+      // Return the converted file data
+      return await response.json();
     } catch (error) {
-      console.error('RLD conversion failed:', error);
+      console.error('Local RLD conversion failed:', error);
       throw error;
     }
   }
 
-  // Convert folder of RLD files to TXT format
+  // Convert folder of RLD files to TXT format (local conversion)
   async convertFolder(files, config) {
     try {
       const formData = new FormData();
@@ -85,10 +82,7 @@ class ApiService {
         formData.append('files', file);
       });
       
-      // Add configuration
-      formData.append('client_id', config.client_id);
-      formData.append('client_secret', config.client_secret);
-      
+      // No cloud credentials needed for local conversion
       if (config.file_filter) {
         formData.append('file_filter', config.file_filter);
       }
@@ -101,20 +95,20 @@ class ApiService {
         formData.append('end_date', config.end_date);
       }
 
-      const response = await fetch(`${this.baseURL}/convert-folder`, {
+      const response = await fetch(`${this.baseURL}/api/process-rld`, {
         method: 'POST',
         body: formData,
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Folder conversion failed');
+        throw new Error(errorData.detail || 'Local folder conversion failed');
       }
 
-      // Return the blob for download
-      return await response.blob();
+      // Return the processed data
+      return await response.json();
     } catch (error) {
-      console.error('Folder conversion failed:', error);
+      console.error('Local folder conversion failed:', error);
       throw error;
     }
   }
@@ -311,6 +305,39 @@ class ApiService {
       throw error;
     }
   }
+
+  // Upload and process RLD file with cloud conversion
+  async uploadRldFile(file, clientId = null, clientSecret = null) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Add cloud credentials if provided
+      if (clientId) {
+        formData.append('client_id', clientId);
+      }
+      if (clientSecret) {
+        formData.append('client_secret', clientSecret);
+      }
+
+      const response = await fetch(`${this.baseURL}/api/upload-rld`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'RLD upload and cloud conversion failed');
+      }
+
+      const result = await response.json();
+      console.log('RLD upload and cloud conversion result:', result);
+      return result;
+    } catch (error) {
+      console.error('RLD upload and cloud conversion failed:', error);
+      throw error;
+    }
+  }
 }
 
 // Library Management Functions
@@ -412,6 +439,118 @@ export const libraryService = {
       throw new Error(`Failed to fetch file data: ${response.statusText}`);
     }
     return await response.json();
+  }
+};
+
+// Email Automation Service
+export const emailService = {
+  // Start email automation
+  async startEmailAutomation() {
+    const response = await fetch(`${API_BASE_URL}/api/email/start`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to start email automation: ${response.statusText}`);
+    }
+    return await response.json();
+  },
+
+  // Stop email automation
+  async stopEmailAutomation() {
+    const response = await fetch(`${API_BASE_URL}/api/email/stop`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to stop email automation: ${response.statusText}`);
+    }
+    return await response.json();
+  },
+
+  // Get email automation status
+  async getEmailStatus() {
+    const response = await fetch(`${API_BASE_URL}/api/email/status`);
+    if (!response.ok) {
+      throw new Error(`Failed to get email status: ${response.statusText}`);
+    }
+    return await response.json();
+  }
+};
+
+// License Management Service - Built-in 200 License System
+export const licenseService = {
+  // Validate license key from built-in system
+  async validateLicense(licenseKey) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/license/validate?license_key=${licenseKey}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`License validation failed: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('License validation error:', error);
+      throw new Error(`Failed to validate license: ${error.message}`);
+    }
+  },
+  
+  // Get license status
+  async getLicenseStatus(licenseKey) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/license/validate?license_key=${licenseKey}`);
+      if (!response.ok) {
+        throw new Error(`Failed to get license status: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('License status error:', error);
+      throw new Error(`Failed to get license status: ${error.message}`);
+    }
+  },
+  
+  // Get license statistics
+  async getBillingInfo(licenseKey) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/license/stats`);
+      if (!response.ok) {
+        throw new Error(`Failed to get license stats: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('License stats error:', error);
+      throw new Error(`Failed to get license stats: ${error.message}`);
+    }
+  },
+
+  // Get usage statistics
+  async getUsageStats(licenseKey) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/license/stats`);
+      if (!response.ok) {
+        throw new Error(`Failed to get usage stats: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Usage stats error:', error);
+      throw new Error(`Failed to get usage stats: ${error.message}`);
+    }
+  },
+  
+  // Get client IP address
+  async getClientIP() {
+    try {
+      const response = await fetch('https://api.ipify.org?format=json');
+      const data = await response.json();
+      return data.ip;
+    } catch (error) {
+      return 'unknown';
+    }
   }
 };
 

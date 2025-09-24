@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Text, JSON
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Text, JSON, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -38,11 +38,13 @@ class FileMetadata(Base):
     filename = Column(String, index=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     records_added = Column(Integer)
+    records_count = Column(Integer)  # Added for email service compatibility
     file_size = Column(Integer)
+    file_type = Column(String)  # Added for email service compatibility
     processing_date = Column(String)
+    upload_date = Column(DateTime)  # Added for email service compatibility
     status = Column(String)
     tags = Column(JSON, default=list)
-    site_properties = Column(JSON, default=dict)
     source = Column(String, default="backend")
     category = Column(String, default="general")
     description = Column(Text, nullable=True)
@@ -65,8 +67,12 @@ class SensorData(Base):
     NRG_PVT1_PV_Temp = Column(Float)
     PSM_c_Si_Isc_Soil = Column(Float)
     PSM_c_Si_Isc_Clean = Column(Float)
+    Solar_Irradiance_1 = Column(Float)  # Added for email service compatibility
+    Solar_Irradiance_2 = Column(Float)  # Added for email service compatibility
+    Solar_Irradiance_3 = Column(Float)  # Added for email service compatibility
     Average_12V_Battery = Column(Float)
     file_source = Column(String)
+
 
 # Create tables
 def create_tables():
