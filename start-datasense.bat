@@ -6,7 +6,11 @@ echo ========================================
 echo    DataSense Desktop Application
 echo ========================================
 echo.
-echo 🚀 Starting DataSense...
+echo 🚀 Starting DataSense on Windows...
+echo.
+echo ✅ Windows detected - Full nrgpy support available
+echo ✅ NRG Systems software compatibility
+echo ✅ Direct RLD conversion without VM
 echo.
 
 REM Check if Node.js is installed
