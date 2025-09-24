@@ -306,19 +306,11 @@ class ApiService {
     }
   }
 
-  // Upload and process RLD file with cloud conversion
-  async uploadRldFile(file, clientId = null, clientSecret = null) {
+  // Upload and process RLD file with local conversion
+  async uploadRldFile(file) {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
-      // Add cloud credentials if provided
-      if (clientId) {
-        formData.append('client_id', clientId);
-      }
-      if (clientSecret) {
-        formData.append('client_secret', clientSecret);
-      }
 
       const response = await fetch(`${this.baseURL}/api/upload-rld`, {
         method: 'POST',
@@ -327,14 +319,14 @@ class ApiService {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'RLD upload and cloud conversion failed');
+        throw new Error(errorData.detail || 'RLD upload and local conversion failed');
       }
 
       const result = await response.json();
-      console.log('RLD upload and cloud conversion result:', result);
+      console.log('RLD upload and local conversion result:', result);
       return result;
     } catch (error) {
-      console.error('RLD upload and cloud conversion failed:', error);
+      console.error('RLD upload and local conversion failed:', error);
       throw error;
     }
   }
@@ -476,83 +468,8 @@ export const emailService = {
   }
 };
 
-// License Management Service - Built-in 200 License System
-export const licenseService = {
-  // Validate license key from built-in system
-  async validateLicense(licenseKey) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/license/validate?license_key=${licenseKey}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`License validation failed: ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error('License validation error:', error);
-      throw new Error(`Failed to validate license: ${error.message}`);
-    }
-  },
-  
-  // Get license status
-  async getLicenseStatus(licenseKey) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/license/validate?license_key=${licenseKey}`);
-      if (!response.ok) {
-        throw new Error(`Failed to get license status: ${response.statusText}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('License status error:', error);
-      throw new Error(`Failed to get license status: ${error.message}`);
-    }
-  },
-  
-  // Get license statistics
-  async getBillingInfo(licenseKey) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/license/stats`);
-      if (!response.ok) {
-        throw new Error(`Failed to get license stats: ${response.statusText}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('License stats error:', error);
-      throw new Error(`Failed to get license stats: ${error.message}`);
-    }
-  },
-
-  // Get usage statistics
-  async getUsageStats(licenseKey) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/license/stats`);
-      if (!response.ok) {
-        throw new Error(`Failed to get usage stats: ${response.statusText}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Usage stats error:', error);
-      throw new Error(`Failed to get usage stats: ${error.message}`);
-    }
-  },
-  
-  // Get client IP address
-  async getClientIP() {
-    try {
-      const response = await fetch('https://api.ipify.org?format=json');
-      const data = await response.json();
-      return data.ip;
-    } catch (error) {
-      return 'unknown';
-    }
-  }
-};
+// License Management Service - REMOVED (No longer needed)
+// All license functionality has been removed from the system
 
 // Create singleton instance
 const apiService = new ApiService();
