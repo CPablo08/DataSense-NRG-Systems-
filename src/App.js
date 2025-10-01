@@ -16,6 +16,10 @@ import autoTable from 'jspdf-autotable';
 import apiService from './services/api';
 import { libraryService, emailService } from './services/api';
 
+// Electron API detection
+const isElectron = window.electronAPI && window.datasenseAPI;
+const isDevelopment = isElectron && window.datasenseAPI?.isDevelopment;
+
 // Styled Components with darker colors
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -2823,6 +2827,34 @@ const generatePDFReport = (data, timeRange, fileName) => {
     return () => clearInterval(autoRefreshInterval);
   }, [loadLibraryFiles, loadLibraryStats]);
 
+  // Electron menu integration
+  useEffect(() => {
+    if (isElectron) {
+      // Set up global functions for Electron menu
+      window.triggerImportRld = handleManualFileImport;
+      window.triggerExportData = handleExportData;
+      window.navigateToView = setCurrentView;
+      
+      // Listen for Electron menu events
+      if (window.electronAPI) {
+        window.electronAPI.onMenuImportRld(() => {
+          console.log('Menu: Import RLD triggered');
+          handleManualFileImport();
+        });
+        
+        window.electronAPI.onMenuExportData(() => {
+          console.log('Menu: Export Data triggered');
+          handleExportData();
+        });
+        
+        window.electronAPI.onMenuNavigate((event, view) => {
+          console.log('Menu: Navigate to', view);
+          setCurrentView(view);
+        });
+      }
+    }
+  }, []);
+
   return (
     <AppContainer>
       {/* Global Loading Overlay */}
@@ -2876,6 +2908,19 @@ const generatePDFReport = (data, timeRange, fileName) => {
             }}>
               DataSense
             </span>
+            {isElectron && (
+              <div style={{ 
+                marginLeft: '10px', 
+                padding: '4px 8px', 
+                background: '#238636', 
+                borderRadius: '4px', 
+                fontSize: '12px',
+                fontWeight: '500',
+                color: '#ffffff'
+              }}>
+                Desktop App
+              </div>
+            )}
           </div>
         </HeaderLeft>
         <HeaderRight>
