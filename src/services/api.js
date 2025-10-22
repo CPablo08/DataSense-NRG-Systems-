@@ -434,35 +434,47 @@ export const libraryService = {
   }
 };
 
-// Email Automation Service
-export const emailService = {
-  // Start email automation
-  async startEmailAutomation() {
-    const response = await fetch(`${API_BASE_URL}/api/email/start`, {
-      method: 'POST',
-    });
+
+// RLD Monitor Service
+export const rldMonitorService = {
+  // Get RLD monitor status
+  async getRldStatus() {
+    const response = await fetch(`${API_BASE_URL}/api/rld/status`);
     if (!response.ok) {
-      throw new Error(`Failed to start email automation: ${response.statusText}`);
+      throw new Error(`Failed to get RLD monitor status: ${response.statusText}`);
     }
     return await response.json();
   },
 
-  // Stop email automation
-  async stopEmailAutomation() {
-    const response = await fetch(`${API_BASE_URL}/api/email/stop`, {
+  // Start RLD monitoring
+  async startRldMonitoring() {
+    const response = await fetch(`${API_BASE_URL}/api/rld/start`, {
       method: 'POST',
     });
     if (!response.ok) {
-      throw new Error(`Failed to stop email automation: ${response.statusText}`);
+      throw new Error(`Failed to start RLD monitoring: ${response.statusText}`);
     }
     return await response.json();
   },
 
-  // Get email automation status
-  async getEmailStatus() {
-    const response = await fetch(`${API_BASE_URL}/api/email/status`);
+  // Stop RLD monitoring
+  async stopRldMonitoring() {
+    const response = await fetch(`${API_BASE_URL}/api/rld/stop`, {
+      method: 'POST',
+    });
     if (!response.ok) {
-      throw new Error(`Failed to get email status: ${response.statusText}`);
+      throw new Error(`Failed to stop RLD monitoring: ${response.statusText}`);
+    }
+    return await response.json();
+  },
+
+  // Manually trigger scan
+  async triggerManualScan() {
+    const response = await fetch(`${API_BASE_URL}/api/rld/manual-scan`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to trigger manual scan: ${response.statusText}`);
     }
     return await response.json();
   }

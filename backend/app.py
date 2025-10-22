@@ -21,18 +21,13 @@ from sqlalchemy.orm import Session
 # Import database
 from database import get_db, create_tables, FileMetadata, SensorData
 
-# Import email automation service
+# Import NRG local configuration
 try:
-    from email_service import start_email_automation, stop_email_automation, get_email_service_status, test_database_connection, manual_scan_for_data
-    from config import EMAIL_CONFIG, NRG_LOCAL_CONFIG
-    print("✅ Email automation service imported successfully")
+    from config import NRG_LOCAL_CONFIG
+    print("✅ NRG local configuration imported successfully")
 except ImportError as e:
-    print(f"⚠️ Email automation service not available: {e}")
-    start_email_automation = None
-    stop_email_automation = None
-    get_email_service_status = None
-    test_database_connection = None
-    manual_scan_for_data = None
+    print(f"⚠️ NRG local configuration not available: {e}")
+    NRG_LOCAL_CONFIG = None
 
 
 # Import NRG library
@@ -43,6 +38,18 @@ except ImportError as e:
     print(f"❌ Error importing NRG library: {e}")
     print("Please ensure nrgpy is installed")
     raise ImportError(f"Required NRG library not available: {e}")
+
+# Import RLD Monitor
+try:
+    from rld_monitor import get_rld_monitor, start_rld_monitoring, stop_rld_monitoring, get_rld_monitor_status, trigger_manual_scan
+    print("✅ RLD Monitor service imported successfully")
+except ImportError as e:
+    print(f"⚠️ RLD Monitor service not available: {e}")
+    get_rld_monitor = None
+    start_rld_monitoring = None
+    stop_rld_monitoring = None
+    get_rld_monitor_status = None
+    trigger_manual_scan = None
 
 # Configure logging
 logging.basicConfig(
@@ -94,7 +101,7 @@ is_monitoring = False  # Flag to track monitoring status
 
 def setup_directories():
     """Create necessary directories"""
-    dirs = ["uploads", "converted", "logs"]
+    dirs = ["uploads", "converted", "logs", "Raw .RLD Files", "text_outputs"]
     for dir_name in dirs:
         Path(dir_name).mkdir(exist_ok=True)
         logger.info(f"Created directory: {dir_name}")
@@ -1294,125 +1301,74 @@ def ensure_file_registered_to_database(filename: str, records_count: int, file_s
             db.rollback()
         return None
 
-# Email Automation Endpoints
 
-@app.post("/api/email/start")
-async def start_email_service():
-    """Start the email automation service with hardcoded credentials"""
-    try:
-        if not start_email_automation:
-            raise HTTPException(status_code=503, detail="Email automation service not available")
-        
-        # Check if credentials are configured (not placeholder values)
-        if (EMAIL_CONFIG["username"] == "your-email@gmail.com" or 
-            EMAIL_CONFIG["password"] == "your-app-password"):
-            raise HTTPException(status_code=400, detail="Email credentials not configured. Please contact administrator to set up credentials.")
-        
-        # Use hardcoded configuration (local conversion doesn't need NRG Cloud credentials)
-        email_config = {
-            "server": EMAIL_CONFIG["server"],
-            "username": EMAIL_CONFIG["username"],
-            "password": EMAIL_CONFIG["password"],
-            "scan_interval": EMAIL_CONFIG["scan_interval"]
-        }
-        
-        service = start_email_automation(email_config)
-        return {
-            "message": "Email automation service started successfully",
-            "email": EMAIL_CONFIG["username"],
-            "scan_interval": EMAIL_CONFIG["scan_interval"]
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error starting email service: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# =============================================================================
+# RLD MONITOR ENDPOINTS
+# =============================================================================
 
-@app.post("/api/email/stop")
-async def stop_email_service():
-    """Stop the email automation service"""
+@app.get("/api/rld/status")
+async def get_rld_status():
+    """Get the current status of the RLD monitoring service"""
     try:
-        if not stop_email_automation:
-            raise HTTPException(status_code=503, detail="Email automation service not available")
-        
-        stop_email_automation()
-        return {"message": "Email automation service stopped successfully"}
-    except Exception as e:
-        logger.error(f"Error stopping email service: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/email/status")
-async def get_email_status():
-    """Get the current status of the email automation service"""
-    try:
-        if not get_email_service_status:
+        if not get_rld_monitor_status:
             return {
                 "running": False,
                 "status": "service_not_available",
-                "message": "Email automation service not available"
+                "message": "RLD Monitor service not available"
             }
         
-        # Check if credentials are configured
-        if (EMAIL_CONFIG["username"] == "your-email@gmail.com" or 
-            EMAIL_CONFIG["password"] == "your-app-password"):
-            return {
-                "running": False,
-                "status": "not_configured",
-                "message": "Email credentials not configured"
-            }
-        
-        return get_email_service_status()
+        return get_rld_monitor_status()
     except Exception as e:
-        logger.error(f"Error getting email service status: {e}")
+        logger.error(f"Error getting RLD monitor status: {e}")
         return {
             "running": False,
             "status": "error",
             "message": str(e)
         }
 
-@app.get("/api/email/test-database")
-async def test_email_database_connection():
-    """Test if the email service can connect to the database"""
+@app.post("/api/rld/start")
+async def start_rld_service():
+    """Start the RLD monitoring service"""
     try:
-        if not test_database_connection:
-            return {
-                "success": False,
-                "message": "Database connection test not available"
-            }
+        if not start_rld_monitoring:
+            raise HTTPException(status_code=503, detail="RLD Monitor service not available")
         
-        success = test_database_connection()
+        start_rld_monitoring()
         return {
-            "success": success,
-            "message": "Database connection successful" if success else "Database connection failed"
+            "message": "RLD Monitor started successfully",
+            "monitoring_directory": "Raw .RLD Files",
+            "scan_interval": 60
         }
     except Exception as e:
-        logger.error(f"Error testing database connection: {e}")
-        return {
-            "success": False,
-            "message": f"Database connection test failed: {str(e)}"
-        }
+        logger.error(f"Error starting RLD monitor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/email/manual-scan")
-async def trigger_manual_email_scan():
-    """Manually trigger email scan for new data (useful for testing)"""
+@app.post("/api/rld/stop")
+async def stop_rld_service():
+    """Stop the RLD monitoring service"""
     try:
-        if not manual_scan_for_data:
-            raise HTTPException(status_code=503, detail="Manual scan not available")
+        if not stop_rld_monitoring:
+            raise HTTPException(status_code=503, detail="RLD Monitor service not available")
         
-        success = manual_scan_for_data()
-        if success:
-            return {
-                "message": "Manual email scan triggered successfully",
-                "status": "success"
-            }
-        else:
-            return {
-                "message": "Manual email scan failed",
-                "status": "error"
-            }
+        stop_rld_monitoring()
+        return {"message": "RLD Monitor stopped successfully"}
+    except Exception as e:
+        logger.error(f"Error stopping RLD monitor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/rld/manual-scan")
+async def trigger_rld_manual_scan():
+    """Manually trigger RLD folder scan"""
+    try:
+        if not trigger_manual_scan:
+            raise HTTPException(status_code=503, detail="RLD Monitor service not available")
+        
+        result = trigger_manual_scan()
+        return result
     except Exception as e:
         logger.error(f"Error triggering manual scan: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Setup directories
 setup_directories()
@@ -1427,6 +1383,16 @@ create_tables()
 
 # Load initial data
 processed_data = load_data()
+
+# Start RLD Monitor on application startup
+try:
+    if start_rld_monitoring:
+        start_rld_monitoring()
+        logger.info("✅ RLD Monitor started automatically on application startup")
+    else:
+        logger.warning("⚠️ RLD Monitor service not available")
+except Exception as e:
+    logger.error(f"❌ Failed to start RLD Monitor on startup: {e}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=5000)

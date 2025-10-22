@@ -144,7 +144,7 @@ fi
 
 # Step 3: Start Frontend
 echo "⚛️  Starting React development server..."
-npm run start:frontend > frontend.log 2>&1 &
+npm start > frontend.log 2>&1 &
 FRONTEND_PID=$!
 
 # Wait for frontend to be ready

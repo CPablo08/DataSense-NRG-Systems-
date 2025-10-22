@@ -4,13 +4,6 @@ DataSense Configuration
 Hardcoded credentials for single-user deployment
 """
 
-# Email Configuration
-EMAIL_CONFIG = {
-    "server": "imap.gmail.com",  # Change to your email server
-    "username": "your-email@gmail.com",  # Change to your email
-    "password": "your-app-password",  # Change to your app password
-    "scan_interval": 300  # 5 minutes
-}
 
 # NRG Local Configuration
 NRG_LOCAL_CONFIG = {
@@ -32,9 +25,3 @@ APP_CONFIG = {
     "debug": False
 }
 
-# Email Search Configuration
-EMAIL_SEARCH_CONFIG = {
-    "body_text": "SymphoniePRO Logger data attached.",  # Text to search for in email body
-    "attachment_extensions": [".rld", ".txt"],  # File extensions to download
-    "archive_folder": "INBOX/Archive"  # Folder to move processed emails
-}

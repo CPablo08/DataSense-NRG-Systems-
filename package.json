@@ -1,42 +1,28 @@
 {
-  "name": "datasense-desktop",
+  "name": "datasense-nrg-systems",
   "version": "1.0.0",
-  "description": "DataSense Desktop Application - Professional meteorological data processing system",
-  "homepage": "./",
-  "main": "electron/main.js",
-  "scripts": {
-    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
-    "start:frontend": "react-scripts start",
-    "start:backend": "cd backend && python app.py",
-    "start:dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "desktop": "./start-datasense.sh"
-  },
-  "keywords": [
-    "meteorological",
-    "data-processing",
-    "nrg-systems",
-    "rld-files",
-    "desktop-app",
-    "electron"
-  ],
-  "author": "DataSense Team",
-  "license": "MIT",
+  "private": true,
   "dependencies": {
-    "framer-motion": "^10.16.0",
-    "jspdf": "^2.5.1",
-    "jspdf-autotable": "^3.5.31",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-icons": "^4.11.0",
     "react-scripts": "5.0.1",
+    "styled-components": "^6.0.7",
     "recharts": "^2.8.0",
-    "styled-components": "^6.0.0"
+    "react-icons": "^4.10.1",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.6.0",
+    "jszip": "^3.10.1"
   },
-  "devDependencies": {
-    "concurrently": "^8.2.0"
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
   },
   "browserslist": {
     "production": [
@@ -51,3 +37,4 @@
     ]
   }
 }
+

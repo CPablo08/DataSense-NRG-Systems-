@@ -14,7 +14,7 @@ import {
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import apiService from './services/api';
-import { libraryService, emailService } from './services/api';
+import { libraryService, rldMonitorService } from './services/api';
 
 // Electron API detection
 const isElectron = window.electronAPI && window.datasenseAPI;
@@ -325,52 +325,6 @@ const ControlButton = styled.button`
 
 
 
-const SitePropertiesCard = styled.div`
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 10px;
-  transition: all 0.3s ease;
-  
-  &:hover {
-    border-color: #1f6feb;
-  }
-`;
-
-const SitePropertiesTitle = styled.h3`
-  color: #fff;
-  margin: 0 0 15px 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 18px;
-`;
-
-const SitePropertiesContent = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-`;
-
-const SiteProperty = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #30363d;
-`;
-
-const PropertyLabel = styled.span`
-  color: #8b949e;
-  font-size: 14px;
-`;
-
-const PropertyValue = styled.span`
-  color: #fff;
-  font-weight: 500;
-  font-size: 14px;
-`;
 
 
 
@@ -1150,7 +1104,7 @@ const translations = {
     bootProgram: 'Boot Program',
     databaseManagement: 'Database Management',
     manageAndVisualize: 'Manage and visualize your RLD data files',
-    importRldFile: 'Import RLD File',
+    importRldFile: 'Import File',
     totalFiles: 'Total Files',
     totalRecords: 'Total Records',
     totalSize: 'Total Size',
@@ -1547,14 +1501,14 @@ const App = () => {
       // Show browser notification for new data
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('DataSense - New Data Available!', {
-          body: `📧 ${newFilesCount} new file(s) processed from email automation\n\nTotal files: ${libraryStats.total_files}\nTotal records: ${libraryStats.total_records.toLocaleString()}`,
+          body: `📁 ${newFilesCount} new file(s) processed\n\nTotal files: ${libraryStats.total_files}\nTotal records: ${libraryStats.total_records.toLocaleString()}`,
           icon: '/assets/datasense-logo.png',
           tag: 'new-data'
         });
       }
       
       // Add log entry
-      addLogEntry(`📧 ${newFilesCount} new file(s) automatically processed from email!`, 'success');
+      addLogEntry(`📁 ${newFilesCount} new file(s) processed!`, 'success');
     }
     
     if (libraryStats) {
@@ -1728,28 +1682,6 @@ const App = () => {
     return sensorUnits[sensorName] || 'N/A';
   };
 
-  // Extract site properties from data
-  const extractSitePropertiesFromData = (data) => {
-    if (!data || data.length === 0) {
-      return {
-        'Site Number': 'Unknown',
-        'Location': 'Unknown',
-        'Latitude': 'Unknown',
-        'Longitude': 'Unknown',
-        'Elevation': 'Unknown',
-        'Time Zone': 'Unknown'
-      };
-    }
-
-    return {
-      'Site Number': 'NRG DataSense Site',
-      'Location': 'Environmental Monitoring Station',
-      'Latitude': 'Unknown',
-      'Longitude': 'Unknown',
-      'Elevation': 'Unknown',
-      'Time Zone': 'UTC'
-    };
-  };
 
   // Parse SymphoniePRO TXT file
   const parseSymphoniePROFile = async (fileContent, fileName) => {
@@ -2264,8 +2196,6 @@ const App = () => {
 
   // Upload modal functions removed - using direct processing instead
 
-  // Email automation status
-  const [emailAutomationStatus, setEmailAutomationStatus] = useState('not_configured');
   
   // System status for boot program
   const [systemStatus, setSystemStatus] = useState('idle'); // 'idle', 'booting', 'running', 'error'
@@ -2274,13 +2204,16 @@ const App = () => {
   const [systemStatuses, setSystemStatuses] = useState({
     frontend: 'running',
     backend: 'unknown',
-    emailAutomation: 'not_configured',
-    rldProcessing: 'idle',
+    rldMonitor: 'unknown',
     database: 'unknown'
   });
   
   // Last update time for status panel
   const [lastStatusUpdate, setLastStatusUpdate] = useState(null);
+  
+  // RLD Monitor next scan countdown
+  const [rldNextScan, setRldNextScan] = useState(null);
+  const [rldScanCountdown, setRldScanCountdown] = useState(0);
   
   // Comprehensive system status check
   const checkSystemStatuses = async () => {
@@ -2309,17 +2242,25 @@ const App = () => {
         newStatuses.backend = 'error';
       }
       
-      // Check email automation status
+      // Check RLD monitor status
       try {
-        const status = await emailService.getEmailStatus();
-        newStatuses.emailAutomation = status.running ? 'running' : 'not_configured';
-        setEmailAutomationStatus(status.running ? 'running' : 'not_configured');
+        const status = await rldMonitorService.getRldStatus();
+        newStatuses.rldMonitor = status.running ? 'running' : 'idle';
+        
+        // Calculate next scan time
+        if (status.running && status.stats.last_scan) {
+          const lastScanTime = new Date(status.stats.last_scan);
+          const scanInterval = status.scan_interval || 60; // seconds
+          const nextScanTime = new Date(lastScanTime.getTime() + scanInterval * 1000);
+          setRldNextScan(nextScanTime);
+        } else {
+          setRldNextScan(null);
+        }
       } catch (error) {
-        console.log('Email automation status check failed:', error.message);
-        newStatuses.emailAutomation = 'error';
-        setEmailAutomationStatus('error');
+        console.log('RLD monitor status check failed:', error.message);
+        newStatuses.rldMonitor = 'error';
+        setRldNextScan(null);
       }
-      
       
       // Check database with timeout
       try {
@@ -2343,16 +2284,9 @@ const App = () => {
         newStatuses.database = 'error';
       }
       
-      // Update RLD processing status based on system status
-      newStatuses.rldProcessing = systemStatus === 'running' ? 'active' : 'idle';
-      
       setSystemStatuses(newStatuses);
       setLastStatusUpdate(new Date().toLocaleTimeString());
       
-      // Also update system status based on email automation status
-      if (newStatuses.emailAutomation === 'running' && systemStatus === 'idle') {
-        setSystemStatus('running');
-      }
       
     } catch (error) {
       console.error('Error checking system statuses:', error);
@@ -2366,6 +2300,21 @@ const App = () => {
     
     return () => clearInterval(statusInterval);
   }, [systemStatus]);
+
+  // RLD Monitor countdown timer - updates every second
+  useEffect(() => {
+    const countdownInterval = setInterval(() => {
+      if (rldNextScan) {
+        const now = new Date();
+        const secondsRemaining = Math.max(0, Math.floor((rldNextScan - now) / 1000));
+        setRldScanCountdown(secondsRemaining);
+      } else {
+        setRldScanCountdown(0);
+      }
+    }, 1000);
+    
+    return () => clearInterval(countdownInterval);
+  }, [rldNextScan]);
 
 
   // Boot Program Function
@@ -2384,17 +2333,17 @@ const App = () => {
         });
       }
       
-      // Start email automation
-      const result = await emailService.startEmailAutomation();
-      console.log('✅ Program booted successfully:', result);
+      // Start RLD monitoring
+      await rldMonitorService.startRldMonitoring();
+      console.log('✅ Program booted successfully - RLD Monitor started');
       
       // Set system status to running
       setSystemStatus('running');
       
       // Show success notification
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('DataSense', {
-            body: '✅ DataSense program booted successfully! Email automation started.',
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('DataSense', {
+            body: '✅ DataSense program booted successfully!',
             icon: '/assets/datasense-logo.png'
           });
         }
@@ -2402,17 +2351,20 @@ const App = () => {
         // Show detailed success message
         const successMessage = `✅ DataSense program booted successfully!
 
-Email automation is now running and will automatically:
-• Scan for new NRG data files every 5 minutes
-• Convert RLD files using nrgpy local conversion
-• Process and display data in real-time
-• Store everything in the database
+RLD Auto-Processing Monitor is now active!
 
-Status: ${result.message}
-Email: ${result.email}
-Scan Interval: ${result.scan_interval} seconds
+The system will automatically:
+• Monitor the "Raw .RLD Files" folder every 60 seconds
+• Convert any new RLD files to TXT using nrgpy
+• Import data to the database
+• Clean up processed files
 
-The system will now automatically process any new NRG data files that arrive via email!`;
+You can also:
+• Import RLD files manually using the Import File button
+• Import TXT files directly
+• View processed data on the dashboard
+
+Place RLD files in the "Raw .RLD Files" folder for automatic processing!`;
         
         alert(successMessage);
       
@@ -2422,14 +2374,7 @@ The system will now automatically process any new NRG data files that arrive via
       // Set system status to error
       setSystemStatus('error');
       
-      let errorMessage = 'Failed to boot program';
-        if (error.message.includes('credentials') || error.message.includes('config')) {
-          errorMessage = 'Email credentials not configured.\n\nPlease contact the administrator to set up the following credentials in the backend:\n• Email server and credentials\n\nOnce configured, the Boot Program button will start the automated email processing with local RLD conversion.';
-      } else if (error.message.includes('503')) {
-        errorMessage = 'Email automation service not available.\n\nPlease try again later or contact the administrator if the issue persists.';
-      } else {
-        errorMessage = `Error: ${error.message}`;
-      }
+      let errorMessage = `Failed to boot program: ${error.message}`;
       
       // Show error notification
       if ('Notification' in window && Notification.permission === 'granted') {
@@ -2456,44 +2401,61 @@ The system will now automatically process any new NRG data files that arrive via
   const handleManualFileImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.rld';
+    input.accept = '.rld,.txt';
     input.multiple = false;
     
     input.onchange = async (e) => {
       const file = e.target.files[0];
       if (!file) return;
       
-      if (!file.name.toLowerCase().endsWith('.rld')) {
-        alert('Please select a valid RLD file');
+      const fileName = file.name.toLowerCase();
+      if (!fileName.endsWith('.rld') && !fileName.endsWith('.txt')) {
+        alert('Please select a valid RLD or TXT file');
         return;
       }
       
       try {
-        console.log('📁 Manual RLD file import started:', file.name);
+        console.log('📁 Manual file import started:', file.name);
         
-        // Show loading state
-        const loadingMessage = `🔄 Processing ${file.name}...\n\nConverting RLD to TXT using nrgpy local conversion...`;
-        alert(loadingMessage);
-        
-        // Create FormData for file upload
         const formData = new FormData();
         formData.append('file', file);
         
-        // Upload and process RLD file
-        const response = await fetch('http://localhost:5000/api/upload-rld', {
-          method: 'POST',
-          body: formData
-        });
+        let response, result;
+        
+        // Determine file type and use appropriate endpoint
+        if (fileName.endsWith('.rld')) {
+          // Show loading state for RLD
+          const loadingMessage = `🔄 Processing ${file.name}...\n\nConverting RLD to TXT using nrgpy local conversion...`;
+          alert(loadingMessage);
+          
+          // Upload and process RLD file
+          response = await fetch('http://localhost:5000/api/upload-rld', {
+            method: 'POST',
+            body: formData
+          });
+        } else if (fileName.endsWith('.txt')) {
+          // Show loading state for TXT
+          const loadingMessage = `🔄 Processing ${file.name}...\n\nImporting TXT file...`;
+          alert(loadingMessage);
+          
+          // Upload and process TXT file
+          response = await fetch('http://localhost:5000/api/process-txt', {
+            method: 'POST',
+            body: formData
+          });
+        }
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const result = await response.json();
-        console.log('✅ RLD file processed successfully:', result);
+        result = await response.json();
+        console.log('✅ File processed successfully:', result);
         
         // Show success message
-        const successMessage = `✅ File imported successfully!\n\nFile: ${result.filename}\nRecords: ${result.records_processed}\nMethod: ${result.conversion_method}\n\nData has been added to the database and will appear on the dashboard.`;
+        const recordsCount = result.records_processed || result.records_added || 0;
+        const method = result.conversion_method || (fileName.endsWith('.txt') ? 'Direct TXT import' : 'RLD conversion');
+        const successMessage = `✅ File imported successfully!\n\nFile: ${result.filename}\nRecords: ${recordsCount}\nMethod: ${method}\n\nData has been added to the database and will appear on the dashboard.`;
         alert(successMessage);
         
         // Refresh library files to show the new file
@@ -2506,8 +2468,8 @@ The system will now automatically process any new NRG data files that arrive via
         await loadDataFromDatabase(result.filename);
         
       } catch (error) {
-        console.error('❌ Error importing RLD file:', error);
-        alert(`❌ Error importing file: ${error.message}\n\nPlease ensure the backend is running and the file is a valid RLD file.`);
+        console.error('❌ Error importing file:', error);
+        alert(`❌ Error importing file: ${error.message}\n\nPlease ensure the backend is running and the file is a valid RLD or TXT file.`);
       }
     };
     
@@ -2523,9 +2485,9 @@ The system will now automatically process any new NRG data files that arrive via
       const file = libraryFiles.find(f => f.filename === filename || f.name === filename);
       if (!file) {
         console.error('File not found in library:', filename);
-        return;
-      }
-      
+      return;
+    }
+
       // Load data from database using the file ID
       const response = await fetch(`http://localhost:5000/api/data/${file.id}`);
       if (!response.ok) {
@@ -2552,7 +2514,7 @@ The system will now automatically process any new NRG data files that arrive via
       console.error('❌ Error loading data from database:', error);
       alert(`❌ Error loading data: ${error.message}`);
     }
-  };
+};
 
 // PDF Report Generation
 const generatePDFReport = (data, timeRange, fileName) => {
@@ -2777,7 +2739,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
           sensorCount: Object.keys(result.data[0] || {}).length,
           fileCount: 1,
           lastUpdate: new Date().toISOString(),
-          siteProperties: result.siteProperties || extractSitePropertiesFromData(result.data)
+          siteProperties: result.siteProperties || {}
         };
         setSummary(summary);
         
@@ -2818,11 +2780,11 @@ const generatePDFReport = (data, timeRange, fileName) => {
     loadLibraryFiles();
     loadLibraryStats();
     
-    // Set up auto-refresh for new data every 30 seconds to catch email automation results
+    // Set up auto-refresh for new data every 30 seconds
     const autoRefreshInterval = setInterval(() => {
       loadLibraryFiles();
       loadLibraryStats();
-    }, 30000); // Refresh every 30 seconds to catch new email-processed files
+    }, 30000); // Refresh every 30 seconds
     
     return () => clearInterval(autoRefreshInterval);
   }, [loadLibraryFiles, loadLibraryStats]);
@@ -2832,7 +2794,6 @@ const generatePDFReport = (data, timeRange, fileName) => {
     if (isElectron) {
       // Set up global functions for Electron menu
       window.triggerImportRld = handleManualFileImport;
-      window.triggerExportData = handleExportData;
       window.navigateToView = setCurrentView;
       
       // Listen for Electron menu events
@@ -2840,11 +2801,6 @@ const generatePDFReport = (data, timeRange, fileName) => {
         window.electronAPI.onMenuImportRld(() => {
           console.log('Menu: Import RLD triggered');
           handleManualFileImport();
-        });
-        
-        window.electronAPI.onMenuExportData(() => {
-          console.log('Menu: Export Data triggered');
-          handleExportData();
         });
         
         window.electronAPI.onMenuNavigate((event, view) => {
@@ -2968,7 +2924,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 <InteractiveControls>
                   <ControlButton 
                     onClick={handleManualFileImport}
-                    title="Import RLD File"
+                    title="Import RLD or TXT File"
                   >
                     <FiUpload />
                     {t('importRldFile')}
@@ -3065,23 +3021,25 @@ const generatePDFReport = (data, timeRange, fileName) => {
                     </StatusText>
                   </StatusItem>
                   
-                  <StatusItem>
-                    <StatusIndicator status={systemStatuses.emailAutomation} />
-                    <StatusText>
-                      <StatusLabel>Email Automation</StatusLabel>
-                      <StatusValue status={systemStatuses.emailAutomation}>
-                        {systemStatuses.emailAutomation === 'running' ? 'Running' : 
-                         systemStatuses.emailAutomation === 'not_configured' ? 'Not Configured' : 'Error'}
-                      </StatusValue>
-                    </StatusText>
-                  </StatusItem>
                   
                   <StatusItem>
-                    <StatusIndicator status={systemStatuses.rldProcessing} />
+                    <StatusIndicator status={systemStatuses.rldMonitor} />
                     <StatusText>
-                      <StatusLabel>RLD Processing</StatusLabel>
-                      <StatusValue status={systemStatuses.rldProcessing}>
-                        {systemStatuses.rldProcessing === 'active' ? 'Active' : 'Idle'}
+                      <StatusLabel>RLD Auto-Monitor</StatusLabel>
+                      <StatusValue status={systemStatuses.rldMonitor}>
+                        {systemStatuses.rldMonitor === 'running' ? 'Active' : 
+                         systemStatuses.rldMonitor === 'idle' ? 'Idle' : 
+                         systemStatuses.rldMonitor === 'error' ? 'Error' : 'Unknown'}
+                        {systemStatuses.rldMonitor === 'running' && rldScanCountdown > 0 && (
+                          <span style={{ 
+                            marginLeft: '8px', 
+                            fontSize: '0.85em', 
+                            opacity: 0.8,
+                            fontWeight: 'normal'
+                          }}>
+                            (Next scan: {rldScanCountdown}s)
+                          </span>
+                        )}
                       </StatusValue>
                     </StatusText>
                   </StatusItem>
@@ -3100,39 +3058,6 @@ const generatePDFReport = (data, timeRange, fileName) => {
                 </StatusGrid>
               </StatusPanel>
 
-              {/* Site Properties */}
-              <SitePropertiesCard>
-                <SitePropertiesTitle>
-                  <FiGlobe />
-                  Site Information
-                </SitePropertiesTitle>
-                <SitePropertiesContent>
-                  <SiteProperty>
-                    <PropertyLabel>Site Number:</PropertyLabel>
-                    <PropertyValue>{summary?.siteProperties?.['Site Number'] || 'No data available'}</PropertyValue>
-                  </SiteProperty>
-                  <SiteProperty>
-                    <PropertyLabel>Location:</PropertyLabel>
-                    <PropertyValue>{summary?.siteProperties?.['Location'] || 'No data available'}</PropertyValue>
-                  </SiteProperty>
-                  <SiteProperty>
-                    <PropertyLabel>Latitude:</PropertyLabel>
-                    <PropertyValue>{summary?.siteProperties?.['Latitude'] || 'No data available'}</PropertyValue>
-                  </SiteProperty>
-                  <SiteProperty>
-                    <PropertyLabel>Longitude:</PropertyLabel>
-                    <PropertyValue>{summary?.siteProperties?.['Longitude'] || 'No data available'}</PropertyValue>
-                  </SiteProperty>
-                  <SiteProperty>
-                    <PropertyLabel>Elevation:</PropertyLabel>
-                    <PropertyValue>{summary?.siteProperties?.['Elevation'] ? `${summary.siteProperties['Elevation']} m` : 'No data available'}</PropertyValue>
-                  </SiteProperty>
-                  <SiteProperty>
-                    <PropertyLabel>Time Zone:</PropertyLabel>
-                    <PropertyValue>{summary?.siteProperties?.['Time Zone'] || 'No data available'}</PropertyValue>
-                  </SiteProperty>
-                </SitePropertiesContent>
-              </SitePropertiesCard>
 
 
 
