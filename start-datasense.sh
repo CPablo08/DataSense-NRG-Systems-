@@ -153,8 +153,8 @@ fi
 # Check if requirements are installed, if not install them
 if ! python -c "import fastapi" 2>/dev/null; then
     echo "📥 Installing Python dependencies..."
-    pip install -q --upgrade pip
-    pip install -q -r requirements.txt
+    python -m pip install -q --upgrade pip
+    python -m pip install -q -r requirements.txt
     echo "✅ Dependencies installed"
 fi
 
