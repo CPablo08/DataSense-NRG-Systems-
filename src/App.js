@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { 
@@ -3164,14 +3164,14 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   <ScrollableChartContainer>
                     <ChartWrapper dataLength={realTimeData.length}>
                       <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={getCurrentChartData()}>
+                        <LineChart data={getCurrentChartData()} isAnimationActive={false}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
                           <XAxis dataKey="time" stroke="#8b949e" />
                           <YAxis stroke="#8b949e" />
                           <Tooltip contentStyle={{ backgroundColor: '#161b22', border: '1px solid #30363d' }} />
                           <Legend />
-                          <Line type="monotone" dataKey="NRG_T60_Temp" stroke="#e74c3c" strokeWidth={2} />
-                          <Line type="monotone" dataKey="NRG_PVT1_PV_Temp" stroke="#f39c12" strokeWidth={2} />
+                          <Line type="monotone" dataKey="NRG_T60_Temp" stroke="#e74c3c" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="NRG_PVT1_PV_Temp" stroke="#f39c12" strokeWidth={2} dot={false} />
                         </LineChart>
                       </ResponsiveContainer>
                     </ChartWrapper>
@@ -3187,12 +3187,12 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   <ScrollableChartContainer>
                     <ChartWrapper dataLength={realTimeData.length}>
                       <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={getCurrentChartData()}>
+                        <AreaChart data={getCurrentChartData()} isAnimationActive={false}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
                           <XAxis dataKey="time" stroke="#8b949e" />
                           <YAxis stroke="#8b949e" />
                           <Tooltip contentStyle={{ backgroundColor: '#161b22', border: '1px solid #30363d' }} />
-                          <Area type="monotone" dataKey="NRG_RH5X_Humi" stroke="#3498db" fill="#3498db" fillOpacity={0.3} />
+                          <Area type="monotone" dataKey="NRG_RH5X_Humi" stroke="#3498db" fill="#3498db" fillOpacity={0.3} dot={false} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </ChartWrapper>
@@ -3208,12 +3208,12 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   <ScrollableChartContainer>
                     <ChartWrapper dataLength={realTimeData.length}>
                       <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={getCurrentChartData()}>
+                        <LineChart data={getCurrentChartData()} isAnimationActive={false}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
                           <XAxis dataKey="time" stroke="#8b949e" />
                           <YAxis stroke="#8b949e" />
                           <Tooltip contentStyle={{ backgroundColor: '#161b22', border: '1px solid #30363d' }} />
-                          <Line type="monotone" dataKey="NRG_BP60_Baro" stroke="#9b59b6" strokeWidth={2} />
+                          <Line type="monotone" dataKey="NRG_BP60_Baro" stroke="#9b59b6" strokeWidth={2} dot={false} />
                         </LineChart>
                       </ResponsiveContainer>
                     </ChartWrapper>
@@ -3229,7 +3229,7 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   <ScrollableChartContainer>
                     <ChartWrapper dataLength={realTimeData.length}>
                       <ResponsiveContainer width="100%" height={200}>
-                        <BarChart data={getCurrentChartData()}>
+                        <BarChart data={getCurrentChartData()} isAnimationActive={false}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
                           <XAxis dataKey="time" stroke="#8b949e" />
                           <YAxis stroke="#8b949e" />
@@ -3250,14 +3250,14 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   <ScrollableChartContainer>
                     <ChartWrapper dataLength={realTimeData.length}>
                       <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={getCurrentChartData()}>
+                        <LineChart data={getCurrentChartData()} isAnimationActive={false}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
                           <XAxis dataKey="time" stroke="#8b949e" />
                           <YAxis stroke="#8b949e" />
                           <Tooltip contentStyle={{ backgroundColor: '#161b22', border: '1px solid #30363d' }} />
                           <Legend />
-                          <Line type="monotone" dataKey="PSM_c_Si_Isc_Soil" stroke="#e67e22" strokeWidth={2} />
-                          <Line type="monotone" dataKey="PSM_c_Si_Isc_Clean" stroke="#f1c40f" strokeWidth={2} />
+                          <Line type="monotone" dataKey="PSM_c_Si_Isc_Soil" stroke="#e67e22" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="PSM_c_Si_Isc_Clean" stroke="#f1c40f" strokeWidth={2} dot={false} />
                         </LineChart>
                       </ResponsiveContainer>
                     </ChartWrapper>
@@ -3273,12 +3273,12 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   <ScrollableChartContainer>
                     <ChartWrapper dataLength={realTimeData.length}>
                       <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={getCurrentChartData()}>
+                        <LineChart data={getCurrentChartData()} isAnimationActive={false}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
                           <XAxis dataKey="time" stroke="#8b949e" />
                           <YAxis stroke="#8b949e" />
                           <Tooltip contentStyle={{ backgroundColor: '#161b22', border: '1px solid #30363d' }} />
-                          <Line type="monotone" dataKey="Average_12V_Battery" stroke="#27ae60" strokeWidth={2} />
+                          <Line type="monotone" dataKey="Average_12V_Battery" stroke="#27ae60" strokeWidth={2} dot={false} />
                         </LineChart>
                       </ResponsiveContainer>
                     </ChartWrapper>
@@ -3296,12 +3296,12 @@ const generatePDFReport = (data, timeRange, fileName) => {
                   <ScrollableChartContainer>
                     <ChartWrapper dataLength={realTimeData.length}>
                       <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={getCurrentChartData()}>
+                        <LineChart data={getCurrentChartData()} isAnimationActive={false}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
                           <XAxis dataKey="time" stroke="#8b949e" />
                           <YAxis stroke="#8b949e" />
                           <Tooltip contentStyle={{ backgroundColor: '#161b22', border: '1px solid #30363d' }} />
-                          <Line type="monotone" dataKey="NRG_40C_Anem" stroke="#1f6feb" strokeWidth={2} />
+                          <Line type="monotone" dataKey="NRG_40C_Anem" stroke="#1f6feb" strokeWidth={2} dot={false} />
                         </LineChart>
                       </ResponsiveContainer>
                     </ChartWrapper>

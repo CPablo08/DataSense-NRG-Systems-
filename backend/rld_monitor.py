@@ -236,6 +236,7 @@ class RLDMonitor:
             
             # Process data lines
             records_added = 0
+            sensor_records = []  # Collect records for bulk insert
             db = next(get_db())
             
             try:
@@ -252,32 +253,34 @@ class RLDMonitor:
                         # Extract timestamp
                         timestamp_str = values[timestamp_col]
                         
-                        # Create sensor data record
-                        sensor_data = SensorData(
-                            timestamp=datetime.now(),
-                            time=timestamp_str,
-                            NRG_40C_Anem=float(values[1]) if len(values) > 1 and values[1] else 0.0,
-                            NRG_200M_Vane=float(values[2]) if len(values) > 2 and values[2] else 0.0,
-                            NRG_T60_Temp=float(values[3]) if len(values) > 3 and values[3] else 0.0,
-                            NRG_RH5X_Humi=float(values[4]) if len(values) > 4 and values[4] else 0.0,
-                            NRG_BP60_Baro=float(values[18]) if len(values) > 18 and values[18] else 0.0,
-                            Rain_Gauge=float(values[6]) if len(values) > 6 and values[6] else 0.0,
-                            NRG_PVT1_PV_Temp=float(values[7]) if len(values) > 7 and values[7] else 0.0,
-                            PSM_c_Si_Isc_Soil=float(values[30]) if len(values) > 30 and values[30] else 0.0,
-                            PSM_c_Si_Isc_Clean=float(values[34]) if len(values) > 34 and values[34] else 0.0,
-                            Solar_Irradiance_1=float(values[8]) if len(values) > 8 and values[8] else 0.0,
-                            Solar_Irradiance_2=float(values[9]) if len(values) > 9 and values[9] else 0.0,
-                            Solar_Irradiance_3=float(values[10]) if len(values) > 10 and values[10] else 0.0,
-                            Average_12V_Battery=float(values[22]) if len(values) > 22 and values[22] else 0.0,
-                            file_source=original_filename
-                        )
-                        
-                        db.add(sensor_data)
+                        # Collect records for bulk insert
+                        sensor_records.append({
+                            'timestamp': datetime.now(),
+                            'time': timestamp_str,
+                            'NRG_40C_Anem': float(values[1]) if len(values) > 1 and values[1] else 0.0,
+                            'NRG_200M_Vane': float(values[2]) if len(values) > 2 and values[2] else 0.0,
+                            'NRG_T60_Temp': float(values[3]) if len(values) > 3 and values[3] else 0.0,
+                            'NRG_RH5X_Humi': float(values[4]) if len(values) > 4 and values[4] else 0.0,
+                            'NRG_BP60_Baro': float(values[18]) if len(values) > 18 and values[18] else 0.0,
+                            'Rain_Gauge': float(values[6]) if len(values) > 6 and values[6] else 0.0,
+                            'NRG_PVT1_PV_Temp': float(values[7]) if len(values) > 7 and values[7] else 0.0,
+                            'PSM_c_Si_Isc_Soil': float(values[30]) if len(values) > 30 and values[30] else 0.0,
+                            'PSM_c_Si_Isc_Clean': float(values[34]) if len(values) > 34 and values[34] else 0.0,
+                            'Solar_Irradiance_1': float(values[8]) if len(values) > 8 and values[8] else 0.0,
+                            'Solar_Irradiance_2': float(values[9]) if len(values) > 9 and values[9] else 0.0,
+                            'Solar_Irradiance_3': float(values[10]) if len(values) > 10 and values[10] else 0.0,
+                            'Average_12V_Battery': float(values[22]) if len(values) > 22 and values[22] else 0.0,
+                            'file_source': original_filename
+                        })
                         records_added += 1
                         
                     except (ValueError, IndexError) as e:
                         logger.warning(f"⚠️ Skipping invalid line {line_num}: {e}")
                         continue
+                
+                # Bulk insert sensor data for better performance
+                if sensor_records:
+                    db.bulk_insert_mappings(SensorData, sensor_records)
                 
                 # Create file metadata record
                 file_metadata = FileMetadata(

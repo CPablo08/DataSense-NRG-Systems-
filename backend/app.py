@@ -13,6 +13,7 @@ from typing import List, Dict, Any, Optional
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uvicorn
@@ -81,6 +82,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# GZip compression middleware for better performance
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Data models
 class NRGConfig(BaseModel):
@@ -220,9 +224,7 @@ def process_txt_file(txt_file: str) -> List[Dict]:
                         
                         processed_data.append(record)
                         
-                        # Log progress every 1000 records
-                        if len(processed_data) % 1000 == 0:
-                            logger.info(f"Processed {len(processed_data)} records so far...")
+                        # Removed progress logging for better performance
                         
                     except Exception as e:
                         logger.warning(f"Error parsing line {i+1} in {txt_file}: {e}")
@@ -412,24 +414,27 @@ async def process_rld_file(file: UploadFile = File(...), db: Session = Depends(g
         # Save file metadata to database
         save_file_metadata(file_metadata, db)
         
-        # Save sensor data to database
+        # Save sensor data to database using bulk insert for better performance
+        sensor_records = []
         for record in new_data:
-            sensor_record = SensorData(
-                file_source=file.filename,
-                time=record.get('time', ''),
-                timestamp=datetime.fromisoformat(record.get('timestamp', datetime.now().isoformat())),
-                NRG_40C_Anem=record.get('NRG_40C_Anem'),
-                NRG_200M_Vane=record.get('NRG_200M_Vane'),
-                NRG_T60_Temp=record.get('NRG_T60_Temp'),
-                NRG_RH5X_Humi=record.get('NRG_RH5X_Humi'),
-                NRG_BP60_Baro=record.get('NRG_BP60_Baro'),
-                Rain_Gauge=record.get('Rain_Gauge'),
-                NRG_PVT1_PV_Temp=record.get('NRG_PVT1_PV_Temp'),
-                PSM_c_Si_Isc_Soil=record.get('PSM_c_Si_Isc_Soil'),
-                PSM_c_Si_Isc_Clean=record.get('PSM_c_Si_Isc_Clean'),
-                Average_12V_Battery=record.get('Average_12V_Battery')
-            )
-            db.add(sensor_record)
+            sensor_records.append({
+                'file_source': file.filename,
+                'time': record.get('time', ''),
+                'timestamp': datetime.fromisoformat(record.get('timestamp', datetime.now().isoformat())),
+                'NRG_40C_Anem': record.get('NRG_40C_Anem'),
+                'NRG_200M_Vane': record.get('NRG_200M_Vane'),
+                'NRG_T60_Temp': record.get('NRG_T60_Temp'),
+                'NRG_RH5X_Humi': record.get('NRG_RH5X_Humi'),
+                'NRG_BP60_Baro': record.get('NRG_BP60_Baro'),
+                'Rain_Gauge': record.get('Rain_Gauge'),
+                'NRG_PVT1_PV_Temp': record.get('NRG_PVT1_PV_Temp'),
+                'PSM_c_Si_Isc_Soil': record.get('PSM_c_Si_Isc_Soil'),
+                'PSM_c_Si_Isc_Clean': record.get('PSM_c_Si_Isc_Clean'),
+                'Average_12V_Battery': record.get('Average_12V_Battery')
+            })
+        
+        # Bulk insert for better performance
+        db.bulk_insert_mappings(SensorData, sensor_records)
         
         db.commit()
         logger.info(f"Saved {len(new_data)} sensor records to database for file: {file.filename}")
@@ -491,24 +496,27 @@ async def process_txt_file_upload(file: UploadFile = File(...), db: Session = De
         # Save file metadata to database
         save_file_metadata(file_metadata, db)
         
-        # Save sensor data to database
+        # Save sensor data to database using bulk insert for better performance
+        sensor_records = []
         for record in new_data:
-            sensor_record = SensorData(
-                file_source=file.filename,
-                time=record.get('time', ''),
-                timestamp=datetime.fromisoformat(record.get('timestamp', datetime.now().isoformat())),
-                NRG_40C_Anem=record.get('NRG_40C_Anem'),
-                NRG_200M_Vane=record.get('NRG_200M_Vane'),
-                NRG_T60_Temp=record.get('NRG_T60_Temp'),
-                NRG_RH5X_Humi=record.get('NRG_RH5X_Humi'),
-                NRG_BP60_Baro=record.get('NRG_BP60_Baro'),
-                Rain_Gauge=record.get('Rain_Gauge'),
-                NRG_PVT1_PV_Temp=record.get('NRG_PVT1_PV_Temp'),
-                PSM_c_Si_Isc_Soil=record.get('PSM_c_Si_Isc_Soil'),
-                PSM_c_Si_Isc_Clean=record.get('PSM_c_Si_Isc_Clean'),
-                Average_12V_Battery=record.get('Average_12V_Battery')
-            )
-            db.add(sensor_record)
+            sensor_records.append({
+                'file_source': file.filename,
+                'time': record.get('time', ''),
+                'timestamp': datetime.fromisoformat(record.get('timestamp', datetime.now().isoformat())),
+                'NRG_40C_Anem': record.get('NRG_40C_Anem'),
+                'NRG_200M_Vane': record.get('NRG_200M_Vane'),
+                'NRG_T60_Temp': record.get('NRG_T60_Temp'),
+                'NRG_RH5X_Humi': record.get('NRG_RH5X_Humi'),
+                'NRG_BP60_Baro': record.get('NRG_BP60_Baro'),
+                'Rain_Gauge': record.get('Rain_Gauge'),
+                'NRG_PVT1_PV_Temp': record.get('NRG_PVT1_PV_Temp'),
+                'PSM_c_Si_Isc_Soil': record.get('PSM_c_Si_Isc_Soil'),
+                'PSM_c_Si_Isc_Clean': record.get('PSM_c_Si_Isc_Clean'),
+                'Average_12V_Battery': record.get('Average_12V_Battery')
+            })
+        
+        # Bulk insert for better performance
+        db.bulk_insert_mappings(SensorData, sensor_records)
         
         db.commit()
         logger.info(f"Saved {len(new_data)} sensor records to database for file: {file.filename}")

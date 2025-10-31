@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Text, JSON, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Text, JSON, Boolean, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -71,7 +71,12 @@ class SensorData(Base):
     Solar_Irradiance_2 = Column(Float)  # Added for email service compatibility
     Solar_Irradiance_3 = Column(Float)  # Added for email service compatibility
     Average_12V_Battery = Column(Float)
-    file_source = Column(String)
+    file_source = Column(String, index=True)  # Add index for faster queries
+    
+    # Add composite index for common queries
+    __table_args__ = (
+        Index('idx_file_timestamp', 'file_source', 'timestamp'),
+    )
 
 
 # Create tables
