@@ -86,6 +86,7 @@ cleanup() {
     echo ""
     echo "🛑 Shutting down DataSense..."
     pkill -f "python.*app.py" || true
+    pkill -f "python3.*app.py" || true
     pkill -f "react-scripts" || true
     lsof -ti:3000,5000 | xargs kill -9 2>/dev/null || true
     echo "✅ DataSense stopped"
@@ -100,6 +101,7 @@ echo "🧹 Cleaning up any existing DataSense processes..."
 
 # Kill Python backend processes
 pkill -f "python.*app.py" 2>/dev/null || true
+pkill -f "python3.*app.py" 2>/dev/null || true
 
 # Kill React dev server processes
 pkill -f "react-scripts" 2>/dev/null || true
@@ -121,14 +123,39 @@ echo ""
 echo "🔧 Starting backend server..."
 cd backend
 
+# Detect Python command (python3 on Linux, python on macOS/Windows)
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON_CMD="python3"
+elif command -v python >/dev/null 2>&1; then
+    PYTHON_CMD="python"
+else
+    echo "❌ Python not found. Please install Python 3."
+    exit 1
+fi
+
+# Create virtual environment if it doesn't exist
+if [ ! -f "venv/bin/activate" ] && [ ! -f "venv/Scripts/activate" ]; then
+    echo "📦 Creating virtual environment..."
+    $PYTHON_CMD -m venv venv
+    echo "✅ Virtual environment created"
+fi
+
 # Activate virtual environment
 if [ -f "venv/bin/activate" ]; then
     source venv/bin/activate
 elif [ -f "venv/Scripts/activate" ]; then
     source venv/Scripts/activate
 else
-    echo "❌ Virtual environment not found. Please run: python -m venv venv"
+    echo "❌ Failed to create virtual environment"
     exit 1
+fi
+
+# Check if requirements are installed, if not install them
+if ! python -c "import fastapi" 2>/dev/null; then
+    echo "📥 Installing Python dependencies..."
+    pip install -q --upgrade pip
+    pip install -q -r requirements.txt
+    echo "✅ Dependencies installed"
 fi
 
 # Start Python backend
@@ -144,6 +171,21 @@ fi
 
 # Step 3: Start Frontend
 echo "⚛️  Starting React development server..."
+
+# Check if Node.js is installed
+if ! command -v npm >/dev/null 2>&1; then
+    echo "❌ Node.js/npm not found. Please install Node.js."
+    kill $BACKEND_PID 2>/dev/null || true
+    exit 1
+fi
+
+# Install npm dependencies if node_modules doesn't exist
+if [ ! -d "node_modules" ]; then
+    echo "📥 Installing frontend dependencies..."
+    npm install
+    echo "✅ Frontend dependencies installed"
+fi
+
 npm start > frontend.log 2>&1 &
 FRONTEND_PID=$!
 
